@@ -2,8 +2,9 @@ package api
 
 import (
 	"fmt"
-	"mppj"
 	"testing"
+
+	"github.com/hpicrypto/mppj"
 
 	"google.golang.org/protobuf/proto"
 )

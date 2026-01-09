@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"mppj"
+
+	"github.com/hpicrypto/mppj"
 )
 
 func MPPJ() {

@@ -1,8 +1,8 @@
 package api
 
 import (
-	"mppj"
-	"mppj/api/pb"
+	"github.com/hpicrypto/mppj"
+	"github.com/hpicrypto/mppj/api/pb"
 )
 
 const (
