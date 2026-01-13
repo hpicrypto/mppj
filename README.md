@@ -2,7 +2,24 @@
 
 This package implement the FD-MPPJ protocol, as proposed in the paper "Multi-party Private
 Joins" by by Anja Lehmann, Christian Mouchet and Andrey Sidorenko, PETS 2026. It implement
-this protocol over the P-256 elliptic curve. 
+this protocol over the P-256 elliptic curve.
+
+## Synopsis
+
+For each party, this package provides an implementation as a type: `mppj.Source`,
+`mppj.Helper` and `mppj.Receiver`. Each type can be instantiated from public parameters
+and provide the main cryptographic operation as public methods.
+
+The protocol has two rounds, so each type has one main method which correspond to its
+local operation in the protocol:
+- `mppj.Source.Prepare` encrypts the source's data towards the receiver's public key.
+- `mppj.Helper.Convert` takes as input all the sources' encrypted data tables, and
+  computes an encrypted *joined* table
+- `mppj.Receiver.JoinTables` decrypts the joined tables and extract the join.
+
+Each operation has a channel-based counterpart which enables each party to process the
+tables in a streaming fashion. The streamed and the non-streamed methods enable processing
+over multiple cores via a parameterizable number of goroutines.
 
 ## Package Structure
 
@@ -24,6 +41,8 @@ this protocol over the P-256 elliptic curve.
 - The values are also assumed to be smaller than 30 bytes, for encoding them as group
   elements in a decodable way.
 - The large-values extension proposed of the paper is not yet implemented.
+- The parties can send any number of rows and the implementation does not add any dummy
+  value to pad to a given number. 
 
 ## Security
 
