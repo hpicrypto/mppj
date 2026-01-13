@@ -22,44 +22,61 @@ var curve = elliptic.P256()
 const KEYSIZE = 16
 const PAYLOADSIZE = 30
 
-var ZeroNonce = make([]byte, aes.BlockSize)
+var zeroNonce = make([]byte, aes.BlockSize)
 
 // *********************** Types ************************
 
-type PublicKey Point
+type publicKey point
 
-func (pk *PublicKey) String() string {
+func (pk *publicKey) String() string {
 	pb, _ := pk.p.MarshalBinary()
 	return hex.EncodeToString(pb)
 }
 
-type SecretKey Scalar
+type secretKey scalar
 
 type SymmetricCiphertext []byte
 
-type SecretKeyTuple struct {
-	bsk *SecretKey
-	esk *SecretKey
+type SecretKey struct {
+	bsk *secretKey
+	esk *secretKey
 }
 
-type PublicKeyTuple struct {
-	bpk *PublicKey
-	epk *PublicKey
+type PublicKey struct {
+	bpk *publicKey
+	epk *publicKey
 }
 
-func (pkt *PublicKeyTuple) String() string {
+func KeyGen() (SecretKey, PublicKey) {
+	bsk, bpk := keyGenPKE()
+	esk, epk := keyGenPKE()
+
+	rsk := SecretKey{
+		bsk: bsk,
+		esk: esk,
+	}
+
+	rpk := PublicKey{
+		bpk: bpk,
+		epk: epk,
+	}
+
+	return rsk, rpk
+}
+
+func (pkt *PublicKey) String() string {
 	return fmt.Sprintf("bpk: %v,\nepk: %v", pkt.bpk, pkt.epk)
 }
 
-// Message represents a message point on the elliptic curve.
-type Message struct {
-	m Point
+// message represents a message point on the elliptic curve.
+type message struct {
+	m point
 }
 
 // Ciphertext represents an ElGamal ciphertext. c0 = g^r, c1 = m * pk^r
 type Ciphertext struct {
-	c0 *Point // g^r
-	c1 *Point // m * pk^r
+	c0 *point // g^r
+	c1 *point // m * pk^r
 }
 
 // pad pads the input byte slice to the next multiple of blockSize.
@@ -93,12 +110,12 @@ func unpad(data []byte) ([]byte, error) {
 
 // *********************** PKE ************************
 
-// PKEEncrypt encrypts a message msg using the public key pk.
-func PKEEncrypt(pk *PublicKey, msg *Message) *Ciphertext {
-	r := RandomScalar()
+// encryptPKE encrypts a message msg using the public key pk.
+func encryptPKE(pk *publicKey, msg *message) *Ciphertext {
+	r := randomScalar()
 
 	c0 := BaseExp(r)
-	c1 := Mul(&msg.m, (*Point)(pk).ScalarExp(r))
+	c1 := Mul(&msg.m, (*point)(pk).ScalarExp(r))
 
 	return &Ciphertext{
 		c0: c0,
@@ -107,8 +124,8 @@ func PKEEncrypt(pk *PublicKey, msg *Message) *Ciphertext {
 
 }
 
-// PKEEncryptVector encrypts a byte slice PAYLOADSIZE bytes at a time using the public key pk. ( due to the 256-bit curve)
-func PKEEncryptVector(pk *PublicKey, msg []byte) ([]*Ciphertext, error) {
+// encryptVectorPKE encrypts a byte slice PAYLOADSIZE bytes at a time using the public key pk. ( due to the 256-bit curve)
+func encryptVectorPKE(pk *publicKey, msg []byte) ([]*Ciphertext, error) {
 
 	ciphertexts := make([]*Ciphertext, len(pad(msg, PAYLOADSIZE))/PAYLOADSIZE)
 	msg_padded := pad(msg, PAYLOADSIZE)
@@ -123,25 +140,25 @@ func PKEEncryptVector(pk *PublicKey, msg []byte) ([]*Ciphertext, error) {
 		if err != nil {
 			return nil, err
 		}
-		ciphertexts[idx] = PKEEncrypt(pk, msg)
+		ciphertexts[idx] = encryptPKE(pk, msg)
 	}
 
 	return ciphertexts, nil
 
 }
 
-// PKEDecrypt decrypts a ciphertext using the secret key sk.
-func PKEDecrypt(sk *SecretKey, ciphertext *Ciphertext) *Message {
+// decryptPKE decrypts a ciphertext using the secret key sk.
+func decryptPKE(sk *secretKey, ciphertext *Ciphertext) *message {
 	// Calculate s = (g ^ r) ^ -sk
-	s := ciphertext.c0.ScalarExp((*Scalar)(sk))
+	s := ciphertext.c0.ScalarExp((*scalar)(sk))
 
 	m := Mul(ciphertext.c1, s)
 
-	return &Message{m: *m}
+	return &message{m: *m}
 }
 
-// PKEDecryptVector decrypts a slice of ciphertexts using the secret key sk.
-func PKEDecryptVector(sk *SecretKey, ciphertexts []*Ciphertext) ([]byte, error) {
+// decryptVectorPKE decrypts a slice of ciphertexts using the secret key sk.
+func decryptVectorPKE(sk *secretKey, ciphertexts []*Ciphertext) ([]byte, error) {
 	msgBytes := make([]byte, 0)
 	msgByteshelper := make([][]byte, len(ciphertexts))
 	var wg sync.WaitGroup
@@ -151,7 +168,7 @@ func PKEDecryptVector(sk *SecretKey, ciphertexts []*Ciphertext) ([]byte, error) 
 		wg.Add(1)
 		go func(i int, ct *Ciphertext) {
 			defer wg.Done()
-			msg, err := PKEDecrypt(sk, ct).GetMessageBytes()
+			msg, err := decryptPKE(sk, ct).GetMessageBytes()
 			if err != nil {
 				errCh <- err
 				return
@@ -178,12 +195,12 @@ func PKEDecryptVector(sk *SecretKey, ciphertexts []*Ciphertext) ([]byte, error) 
 	return msgBytes, nil
 }
 
-// ReRand re-randomizes a ciphertext using pk.
-func ReRand(pk *PublicKey, ciphertext *Ciphertext) *Ciphertext {
-	r := RandomScalar()
+// reRand re-randomizes a ciphertext using pk.
+func reRand(pk *publicKey, ciphertext *Ciphertext) *Ciphertext {
+	r := randomScalar()
 
 	c0 := Mul(ciphertext.c0, BaseExp(r))
-	c1 := Mul(ciphertext.c1, (*Point)(pk).ScalarExp(r))
+	c1 := Mul(ciphertext.c1, (*point)(pk).ScalarExp(r))
 
 	return &Ciphertext{
 		c0: c0,
@@ -192,27 +209,27 @@ func ReRand(pk *PublicKey, ciphertext *Ciphertext) *Ciphertext {
 
 }
 
-// ReRandVector re-randomizes a slice of ciphertexts using pk.
-func ReRandVector(pk *PublicKey, ciphertexts []*Ciphertext) []*Ciphertext {
+// reRandVector re-randomizes a slice of ciphertexts using pk.
+func reRandVector(pk *publicKey, ciphertexts []*Ciphertext) []*Ciphertext {
 	ciphertextsout := make([]*Ciphertext, len(ciphertexts))
 	var wg sync.WaitGroup
 	for i, ct := range ciphertexts {
 		wg.Add(1)
 		go func(i int, ct *Ciphertext) {
 			defer wg.Done()
-			ciphertextsout[i] = ReRand(pk, ct)
+			ciphertextsout[i] = reRand(pk, ct)
 		}(i, ct)
 	}
 	wg.Wait()
 	return ciphertextsout
 }
 
-// PKEKeyGen generates a new public/private key pair. (scalar, point)
-func PKEKeyGen() (*SecretKey, *PublicKey) {
-	sk := RandomScalar()
+// keyGenPKE generates a new public/private key pair. (scalar, point)
+func keyGenPKE() (*secretKey, *publicKey) {
+	sk := randomScalar()
 
 	pk := BaseExp(sk)
-	return (*SecretKey)(sk.Neg()), (*PublicKey)(pk) // Negate the scalar for efficiency
+	return (*secretKey)(sk.Neg()), (*publicKey)(pk) // Negate the scalar for efficiency
 }
 
 // Serialize serializes a Ciphertext into a byte slice.
@@ -229,7 +246,7 @@ func (ct *Ciphertext) Serialize() ([]byte, error) {
 	return append(c0Bytes, c1Bytes...), nil
 }
 
-func SerializeCiphertexts(cts []*Ciphertext) ([]byte, error) {
+func serializeCiphertexts(cts []*Ciphertext) ([]byte, error) {
 	serialized := make([]byte, 0)
 	for _, ct := range cts {
 		serializedct, err := ct.Serialize()
@@ -242,8 +259,8 @@ func SerializeCiphertexts(cts []*Ciphertext) ([]byte, error) {
 	return serialized, nil
 }
 
-// DeserializeCiphertexts deserializes a byte slice into a slice of Ciphertexts.
-func DeserializeCiphertexts(data []byte) ([]*Ciphertext, error) {
+// deserializeCiphertexts deserializes a byte slice into a slice of Ciphertexts.
+func deserializeCiphertexts(data []byte) ([]*Ciphertext, error) {
 
 	byteLen := int(group.Params().CompressedElementLength)
 	ciphertextlen := 2 * byteLen
@@ -290,7 +307,7 @@ func DeserializeCiphertext(data []byte) (*Ciphertext, error) {
 	}, nil
 }
 
-func (msg *Message) String() string {
+func (msg *message) String() string {
 	msgstr, err := msg.GetMessageString()
 	if err != nil {
 		return "Invalid message"
@@ -298,7 +315,7 @@ func (msg *Message) String() string {
 	return fmt.Sprintf("Message(%s)", msgstr)
 }
 
-func (msg *Message) Equals(other *Message) bool {
+func (msg *message) Equals(other *message) bool {
 	if msg == nil || other == nil {
 		return msg == other
 	}
@@ -313,7 +330,7 @@ func (ct *Ciphertext) Equals(other *Ciphertext) bool {
 	return ct.c0.Equals(other.c0) && ct.c1.Equals(other.c1)
 }
 
-func NewMessageFromBytes(msgBytesin []byte) (*Message, error) {
+func NewMessageFromBytes(msgBytesin []byte) (*message, error) {
 	params := curve.Params()
 
 	if len(msgBytesin) == 0 {
@@ -367,11 +384,11 @@ func NewMessageFromBytes(msgBytesin []byte) (*Message, error) {
 		return nil, err // when using a compatible curve, this should never happen
 	}
 
-	return &Message{m: *result}, nil
+	return &message{m: *result}, nil
 }
 
 // GetMessageBytes returns the message as a byte slice.
-func (msg *Message) GetMessageBytes() ([]byte, error) {
+func (msg *message) GetMessageBytes() ([]byte, error) {
 	serialized, err := msg.m.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -389,7 +406,7 @@ func (msg *Message) GetMessageBytes() ([]byte, error) {
 	return msgBytes, nil
 }
 
-func (msg *Message) GetMessageString() (string, error) {
+func (msg *message) GetMessageString() (string, error) {
 	bytes, err := msg.GetMessageBytes()
 	if err != nil {
 		return "", err
@@ -397,7 +414,7 @@ func (msg *Message) GetMessageString() (string, error) {
 	return string(bytes), nil
 }
 
-func (msg *Message) GetMessageStringHex() (string, error) {
+func (msg *message) GetMessageStringHex() (string, error) {
 	bytes, err := msg.GetMessageBytes()
 	if err != nil {
 		return "", err
@@ -407,23 +424,23 @@ func (msg *Message) GetMessageStringHex() (string, error) {
 }
 
 // RandomMsg creates a new random message point.
-func RandomMsg() (*Message, error) {
+func RandomMsg() (*message, error) {
 
-	randomPoint := RandomPoint()
+	randomPoint := randomPoint()
 
-	return &Message{m: *randomPoint}, nil
+	return &message{m: *randomPoint}, nil
 }
 
 // HashToPoint hashes a byte slice to a point on the curve. Uses the secure hash-to-group approach from the underlying group
-func HashToMessage(msg, sid []byte) *Message {
-	return &Message{m: *HashToPoint(msg, sid)}
+func hashToMessage(msg, sid []byte) *message {
+	return &message{m: *hashToPoint(msg, sid)}
 }
 
 // *********************** Symmetric ************************
 
 // RandomKeyFromPoint generates a random 16-byte key from a random point on the curve
-func RandomKeyFromPoint(sid []byte) (*Point, []byte) {
-	rp := RandomPoint()
+func RandomKeyFromPoint(sid []byte) (*point, []byte) {
+	rp := randomPoint()
 
 	key, err := KeyFromPoint(rp, sid)
 	if err != nil {
@@ -433,7 +450,7 @@ func RandomKeyFromPoint(sid []byte) (*Point, []byte) {
 	return rp, key
 }
 
-func KeyFromPoint(rp *Point, sid []byte) ([]byte, error) {
+func KeyFromPoint(rp *point, sid []byte) ([]byte, error) {
 	info := "ephemeral associated data val key"
 
 	serialized, err := rp.MarshalBinary()
@@ -458,7 +475,7 @@ func ctr(key, plaintext []byte) (SymmetricCiphertext, error) {
 	}
 
 	ciphertext := make([]byte, len(plaintext))
-	cipher.NewCTR(block, ZeroNonce).XORKeyStream(ciphertext, plaintext) // nonce = 16 * 0x00 since each key is used only once
+	cipher.NewCTR(block, zeroNonce).XORKeyStream(ciphertext, plaintext) // nonce = 16 * 0x00 since each key is used only once
 
 	return ciphertext, nil
 
@@ -475,17 +492,17 @@ func SymmetricDecrypt(key []byte, ciphertext SymmetricCiphertext) ([]byte, error
 }
 
 // Generates keys *deterministically* from a seed
-func GetTestKeys(seed []byte) (SecretKeyTuple, PublicKeyTuple) {
+func GetTestKeys(seed []byte) (SecretKey, PublicKey) {
 
 	xof, err := blake2b.NewXOF(blake2b.OutputLengthUnknown, seed)
 	if err != nil {
 		panic(err)
 	}
 
-	esk := &Scalar{s: group.RandomScalar(xof)}
-	bsk := &Scalar{s: group.RandomScalar(xof)}
-	rsk := SecretKeyTuple{esk: (*SecretKey)(esk.Neg()), bsk: (*SecretKey)(bsk.Neg())}
-	rpk := PublicKeyTuple{epk: (*PublicKey)(BaseExp(esk)), bpk: (*PublicKey)(BaseExp(bsk))}
+	esk := &scalar{s: group.RandomScalar(xof)}
+	bsk := &scalar{s: group.RandomScalar(xof)}
+	rsk := SecretKey{esk: (*secretKey)(esk.Neg()), bsk: (*secretKey)(bsk.Neg())}
+	rpk := PublicKey{epk: (*publicKey)(BaseExp(esk)), bpk: (*publicKey)(BaseExp(bsk))}
 
 	return rsk, rpk
 }

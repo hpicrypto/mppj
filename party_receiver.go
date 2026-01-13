@@ -9,45 +9,28 @@ import (
 
 type Receiver struct {
 	sid       []byte
-	sourceIDs []SourceID
-	recvSK    SecretKeyTuple
-	recvPK    PublicKeyTuple
+	sourceIDs []PartyID
+	recvSK    SecretKey
+	recvPK    PublicKey
 }
 
 // NewReceiver creates a new receiver
-func NewReceiver(sid []byte, sourceIDs []SourceID) *Receiver { // TODO probably we don't want this one
-	bsk, bpk := PKEKeyGen()
-	esk, epk := PKEKeyGen()
-
-	rsk := SecretKeyTuple{
-		bsk: bsk,
-		esk: esk,
-	}
-
-	rpk := PublicKeyTuple{
-		bpk: bpk,
-		epk: epk,
-	}
-
-	return NewReceiverWithKeys(sid, sourceIDs, rsk, rpk)
-}
-
-func NewReceiverWithKeys(sid []byte, sourceIDs []SourceID, rsk SecretKeyTuple, rpk PublicKeyTuple) *Receiver {
+func NewReceiver(sess *Session, sk SecretKey) *Receiver { // TODO probably we don't want this one
 	r := &Receiver{
-		sid:       sid,
-		sourceIDs: make([]SourceID, len(sourceIDs)),
-		recvSK:    rsk,
-		recvPK:    rpk,
+		sid:       sess.ID,
+		sourceIDs: make([]PartyID, len(sess.Sources)),
+		recvSK:    sk,
+		recvPK:    sess.ReceiverPK,
 	}
-	copy(r.sourceIDs, sourceIDs)
+	copy(r.sourceIDs, sess.Sources)
 	return r
 }
 
-func (r *Receiver) GetPK() PublicKeyTuple {
+func (r *Receiver) GetPK() PublicKey {
 	return r.recvPK
 }
 
-func (r *Receiver) getSK() SecretKeyTuple {
+func (r *Receiver) getSK() SecretKey {
 	return r.recvSK
 }
 
@@ -78,7 +61,7 @@ func (r *Receiver) JoinTablesStream(in chan EncRowWithHint, numTable int) (JoinT
 		go func() {
 			defer wg.Done()
 			for ciphertexts := range in {
-				msgPRF, err := OPRFUnblind(r.recvSK.bsk, &ciphertexts.Cnyme).GetMessageBytes()
+				msgPRF, err := oprfUnblind(r.recvSK.bsk, &ciphertexts.Cnyme).GetMessageBytes()
 				if err != nil {
 					log.Fatalf("Decryption error: %v", err)
 				}
@@ -94,14 +77,14 @@ func (r *Receiver) JoinTablesStream(in chan EncRowWithHint, numTable int) (JoinT
 	return r.intersectHint(groups)
 }
 
-func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[SourceID]string, error) {
+func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[PartyID]string, error) {
 	decGroup := make([]EncValueWithHint, len(group))
 
 	for i, ge := range group {
 		decGroup[i] = EncValueWithHint{
 			val:        ge.CVal,
-			blindedkey: *OPRFUnblind(r.recvSK.bsk, &ge.CValKey),
-			hint:       *OPRFUnblind(r.recvSK.bsk, &ge.CHint),
+			blindedkey: *oprfUnblind(r.recvSK.bsk, &ge.CValKey),
+			hint:       *oprfUnblind(r.recvSK.bsk, &ge.CHint),
 		}
 	}
 
@@ -111,7 +94,7 @@ func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[SourceID]string, er
 	}
 	invMask := mask.Invert()
 
-	out := make(map[SourceID]string, len(group))
+	out := make(map[PartyID]string, len(group))
 	for _, dge := range decGroup {
 		keyp := Mul(&dge.blindedkey.m, invMask)
 		key, err := KeyFromPoint(keyp, r.sid)
@@ -134,12 +117,12 @@ func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[SourceID]string, er
 		}
 		sourceID := r.sourceIDs[sourceIndex]
 
-		encVal, err := DeserializeCiphertexts(encValBytes)
+		encVal, err := deserializeCiphertexts(encValBytes)
 		if err != nil {
 			panic(err)
 		}
 
-		plantext_data, err := PKEDecryptVector(r.recvSK.esk, encVal)
+		plantext_data, err := decryptVectorPKE(r.recvSK.esk, encVal)
 		if err != nil {
 			panic(err)
 		}

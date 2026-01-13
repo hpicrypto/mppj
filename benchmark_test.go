@@ -13,10 +13,13 @@ type benchParam struct {
 }
 
 func BenchmarkSourceProcessRow(b *testing.B) {
-	sourceIDs := []SourceID{"source1", "source2"}
-	sid := NewSessionID(2, "helper", "receiver", sourceIDs)
-	receiver := NewReceiver(sid, sourceIDs)
-	source := NewDataSource(sid, receiver.GetPK())
+	sourceIDs := []PartyID{"source1", "source2"}
+	_, rpk := KeyGen()
+	sess, err := NewSession(sourceIDs, "helper", "receiver", rpk)
+	if err != nil {
+		b.Fatalf("Failed to create session: %v", err)
+	}
+	source := NewDataSource(sess)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, err := source.ProcessRow("user1", "value1")
@@ -27,11 +30,14 @@ func BenchmarkSourceProcessRow(b *testing.B) {
 }
 
 func BenchmarkHelperConvertRow(b *testing.B) {
-	sourceIDs := []SourceID{"source1", "source2"}
-	sid := NewSessionID(2, "helper", "receiver", sourceIDs)
-	receiver := NewReceiver(sid, sourceIDs)
-	source := NewDataSource(sid, receiver.GetPK())
-	helper := NewHelper(sid, sourceIDs, 1)
+	sourceIDs := []PartyID{"source1", "source2"}
+	_, rpk := KeyGen()
+	sess, err := NewSession(sourceIDs, "helper", "receiver", rpk)
+	if err != nil {
+		b.Fatalf("Failed to create session: %v", err)
+	}
+	source := NewDataSource(sess)
+	helper := NewHelper(sess)
 
 	cuid, cval, err := source.ProcessRow("user1", "value1")
 	if err != nil {
@@ -39,11 +45,9 @@ func BenchmarkHelperConvertRow(b *testing.B) {
 	}
 	encRow := EncRow{Cuid: cuid, Cval: cval}
 
-	pk := receiver.GetPK()
-
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := helper.ConvertRow(pk, &encRow, 1)
+		_, err := helper.ConvertRow(rpk, &encRow, 1)
 		if err != nil {
 			b.Fatalf("ConvertRow failed: %v", err)
 		}
@@ -51,26 +55,26 @@ func BenchmarkHelperConvertRow(b *testing.B) {
 }
 
 func BenchmarkOps(b *testing.B) {
-	sourceIDs := []SourceID{"source1", "source2"}
-	sid := NewSessionID(2, "helper", "receiver", sourceIDs)
+	sourceIDs := []PartyID{"source1", "source2"}
+	_, rpk := KeyGen()
+	sess, err := NewSession(sourceIDs, "helper", "receiver", rpk)
+	if err != nil {
+		b.Fatalf("Failed to create session: %v", err)
+	}
 
-	receiver := NewReceiver(sid, sourceIDs)
-	ds := NewDataSource(sid, receiver.GetPK())
-	//helper := NewHelper(sid)
-
+	ds := NewDataSource(sess)
+	//helper := NewHelper(sess)
 	tables := []TablePlain{make(TablePlain), make(TablePlain)}
 	for i := range 10000 {
 		tables[0][fmt.Sprintf("uid-%d", i)] = fmt.Sprintf("val-%d-1", i)
 		tables[1][fmt.Sprintf("uid-%d", i)] = fmt.Sprintf("val-%d-0", i)
 	}
 	table := tables[0]
-	pk := receiver.GetPK()
-
 	b.ResetTimer()
 
 	b.Run("PrepareStream", func(b *testing.B) {
 		for b.Loop() {
-			ds.PrepareStream(pk, table)
+			ds.PrepareStream(table)
 		}
 	})
 
@@ -88,30 +92,32 @@ func BenchmarkFullJoin(b *testing.B) {
 	for _, param := range benchParams {
 		b.Run(fmt.Sprintf("%dP-%dRows-%dJoin", param.numParties, param.numRows, param.joinSize), func(b *testing.B) {
 
-			dsNames := make([]SourceID, param.numParties)
+			dsNames := make([]PartyID, param.numParties)
 			for i := 0; i < param.numParties; i++ {
-				dsNames[i] = SourceID("ds" + strconv.Itoa(i+1))
+				dsNames[i] = PartyID("ds" + strconv.Itoa(i+1))
 			}
-			sid := NewSessionID(3, "helper", "receiver", dsNames)
+			rsk, rpk := KeyGen()
+			sess, err := NewSession(dsNames, "helper", "receiver", rpk)
+			if err != nil {
+				b.Fatalf("Failed to create session: %v", err)
+			}
 
-			receiver := NewReceiver(sid, dsNames)
-			ds := NewDataSource(sid, receiver.GetPK()) // technically, only one data source instance is needed
-			helper := NewHelper(sid, dsNames, param.numRows)
-
-			rpk := receiver.GetPK()
+			receiver := NewReceiver(sess, rsk)
+			ds := NewDataSource(sess) // technically, only one data source instance is needed
+			helper := NewHelper(sess)
 
 			tables := GenTestTables(dsNames, param.numRows, param.joinSize)
 
 			b.ResetTimer()
 
-			encTables := make(map[SourceID]EncTable, 0)
+			encTables := make(map[PartyID]EncTable, 0)
 
 			for b.Loop() {
 
 				// Data sources do this:
 
 				for sourceID, table := range tables {
-					encTable, err := ds.Prepare(receiver.GetPK(), table)
+					encTable, err := ds.Prepare(table)
 					encTables[sourceID] = encTable
 					if err != nil {
 						b.Errorf("Error in Prepare: %v", err)
@@ -121,7 +127,7 @@ func BenchmarkFullJoin(b *testing.B) {
 				// Send tables to helper
 				// Helper does this:
 
-				joinedTables, err := helper.Convert(rpk, encTables)
+				joinedTables, err := helper.Convert(encTables)
 				if err != nil {
 					b.Errorf("Error in Convert")
 				}

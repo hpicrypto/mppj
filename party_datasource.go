@@ -9,19 +9,19 @@ import (
 
 type DataSource struct {
 	sid []byte
-	rpk PublicKeyTuple
+	rpk PublicKey
 }
 
-func NewDataSource(sid []byte, rpk PublicKeyTuple) *DataSource {
-	return &DataSource{sid: sid, rpk: rpk}
+func NewDataSource(sess *Session) *DataSource {
+	return &DataSource{sid: sess.ID, rpk: sess.ReceiverPK}
 }
 
 // Prepare prepares a table for joining by adding hashing the UIDs and encrypting its contents towards the receiver.
-func (s *DataSource) Prepare(rpk PublicKeyTuple, table TablePlain) (EncTable, error) {
+func (s *DataSource) Prepare(table TablePlain) (EncTable, error) {
 
 	preparedTable := make(EncTable, len(table))
 
-	encRows, err := s.PrepareStream(rpk, table)
+	encRows, err := s.PrepareStream(table)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (s *DataSource) Prepare(rpk PublicKeyTuple, table TablePlain) (EncTable, er
 }
 
 // Prepare prepares a table for joining by adding hashing the UIDs and encrypting its contents towards the receiver.
-func (s *DataSource) PrepareStream(rpk PublicKeyTuple, table TablePlain, ncpu ...int) (encRows <-chan EncRow, err error) {
+func (s *DataSource) PrepareStream(table TablePlain, ncpu ...int) (encRows <-chan EncRow, err error) {
 	var wg sync.WaitGroup
 
 	rows := make(chan TableRow, len(table))
@@ -89,7 +89,7 @@ func (s *DataSource) PrepareStream(rpk PublicKeyTuple, table TablePlain, ncpu ..
 }
 
 func (s *DataSource) ProcessRow(uid, val string) (cuid *Ciphertext, cval []*Ciphertext, err error) {
-	cuid = OPRFBlind(s.rpk.bpk, []byte(uid), s.sid)
-	cval, err = PKEEncryptVector(s.rpk.epk, []byte(val))
+	cuid = oprfBlind(s.rpk.bpk, []byte(uid), s.sid)
+	cval, err = encryptVectorPKE(s.rpk.epk, []byte(val))
 	return
 }

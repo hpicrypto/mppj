@@ -105,20 +105,20 @@ func TestRandomMsg(t *testing.T) {
 func TestScalarMul(t *testing.T) {
 	tests := []struct {
 		name string
-		a    *Point
-		b    *Scalar
-		want *Point
+		a    *point
+		b    *scalar
+		want *point
 	}{
 		{
 			name: "Scalar multiplication with base point",
 			a:    Gen(),
-			b:    NewScalar(big.NewInt(2)),
-			want: Gen().ScalarExp(NewScalar(big.NewInt(2))),
+			b:    newScalar(big.NewInt(2)),
+			want: Gen().ScalarExp(newScalar(big.NewInt(2))),
 		},
 		{
 			name: "Scalar multiplication with one",
 			a:    Gen(),
-			b:    NewScalar(big.NewInt(1)),
+			b:    newScalar(big.NewInt(1)),
 			want: Gen(),
 		},
 	}
@@ -134,7 +134,7 @@ func TestScalarMul(t *testing.T) {
 }
 
 func TestGetRandomPoint(t *testing.T) {
-	point := RandomPoint()
+	point := randomPoint()
 
 	if point == nil {
 		t.Fatalf("GetRandomPoint() returned nil point")
@@ -145,8 +145,8 @@ func TestGetRandomPoint(t *testing.T) {
 func TestAdd(t *testing.T) {
 	tests := []struct {
 		name string
-		a, b *Point
-		want *Point
+		a, b *point
+		want *point
 	}{
 		{
 			name: "Add base point to itself",
@@ -180,13 +180,13 @@ func TestAdd(t *testing.T) {
 func TestInvert(t *testing.T) {
 	tests := []struct {
 		name  string
-		point *Point
-		want  *Point
+		point *point
+		want  *point
 	}{
 		{
 			name:  "Invert base point",
 			point: Gen(),
-			want:  BaseExp(NewScalar(big.NewInt(1)).Neg()),
+			want:  BaseExp(newScalar(big.NewInt(1)).Neg()),
 		},
 	}
 
@@ -200,7 +200,7 @@ func TestInvert(t *testing.T) {
 }
 
 func TestInvert2(t *testing.T) {
-	point := RandomPoint()
+	point := randomPoint()
 
 	inverted := point.Invert()
 	if inverted == nil {
@@ -213,7 +213,7 @@ func TestInvert2(t *testing.T) {
 }
 
 func TestInvert3(t *testing.T) {
-	point := RandomPoint()
+	point := randomPoint()
 
 	inverted := point.Invert()
 	if inverted == nil {
@@ -236,9 +236,9 @@ func TestEncrypt(t *testing.T) {
 		t.Fatalf("Failed to create message: %v", err)
 	}
 
-	_, pk := PKEKeyGen()
+	_, pk := keyGenPKE()
 
-	ciphertext := PKEEncrypt(pk, msg)
+	ciphertext := encryptPKE(pk, msg)
 	if ciphertext == nil {
 		t.Fatalf("Encrypt() returned nil ciphertext")
 	}
@@ -258,7 +258,7 @@ func TestEqual(t *testing.T) {
 
 func TestSerializeDeserializePoint(t *testing.T) {
 	// Generate a random point
-	point := RandomPoint()
+	point := randomPoint()
 
 	// Serialize the point
 	serializedPoint, err := point.MarshalBinary()
@@ -282,8 +282,8 @@ func TestSerializeDeserializePoint(t *testing.T) {
 
 func TestSerializeDeserializeCiphertext(t *testing.T) {
 
-	point1 := RandomPoint()
-	point2 := RandomPoint()
+	point1 := randomPoint()
+	point2 := randomPoint()
 
 	ciphertext := &Ciphertext{c0: point1, c1: point2}
 
@@ -307,9 +307,9 @@ func TestSerializeDeserializeCiphertext(t *testing.T) {
 
 func TestSerializeDeserializeCiphertext2(t *testing.T) {
 
-	c0 := RandomPoint()
+	c0 := randomPoint()
 
-	c1 := RandomPoint()
+	c1 := randomPoint()
 
 	ciphertext := &Ciphertext{c0: c0, c1: c1}
 
@@ -332,9 +332,9 @@ func TestSerializeDeserializeCiphertext2(t *testing.T) {
 }
 
 func TestScalarAddition(t *testing.T) {
-	s1 := RandomScalar()
+	s1 := randomScalar()
 
-	s2 := RandomScalar()
+	s2 := randomScalar()
 
 	s3 := s1.Add(s2)
 
@@ -346,8 +346,8 @@ func TestScalarAddition(t *testing.T) {
 func TestScalarAdditionExp(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
-		s1 := RandomScalar()
-		s2 := RandomScalar()
+		s1 := randomScalar()
+		s2 := randomScalar()
 
 		s3 := s1.Add(s2)
 
@@ -360,12 +360,12 @@ func TestScalarAdditionExp(t *testing.T) {
 func TestSecretExponentiationGen(t *testing.T) {
 
 	num_shares := 10
-	nonceSum := NewScalar(big.NewInt(0))
-	blind_shares := make([]*Point, num_shares)
+	nonceSum := newScalar(big.NewInt(0))
+	blind_shares := make([]*point, num_shares)
 
-	nonces := make([]*Scalar, num_shares)
+	nonces := make([]*scalar, num_shares)
 	for i := range num_shares {
-		s := RandomScalar()
+		s := randomScalar()
 
 		nonces[i] = s.Copy()
 		blind_shares[i] = BaseExp(nonces[i].Copy())
@@ -373,7 +373,7 @@ func TestSecretExponentiationGen(t *testing.T) {
 	}
 
 	blind := BaseExp(nonceSum)
-	decKeyTemp := MulBatched(blind_shares)
+	decKeyTemp := mulBatched(blind_shares)
 
 	if !blind.Equals(decKeyTemp) {
 		t.Errorf("Secrets do not match: %s != %s", blind, decKeyTemp)
@@ -383,13 +383,13 @@ func TestSecretExponentiationGen(t *testing.T) {
 func TestSecretExponentiation(t *testing.T) {
 
 	num_shares := 10
-	blind_base := RandomPoint()
-	nonceSum := NewScalar(big.NewInt(0))
-	blind_shares := make([]*Point, num_shares)
+	blind_base := randomPoint()
+	nonceSum := newScalar(big.NewInt(0))
+	blind_shares := make([]*point, num_shares)
 
-	nonces := make([]*Scalar, num_shares)
+	nonces := make([]*scalar, num_shares)
 	for i := range num_shares {
-		s := RandomScalar()
+		s := randomScalar()
 
 		nonces[i] = s
 		blind_shares[i] = blind_base.ScalarExp(s)
@@ -397,7 +397,7 @@ func TestSecretExponentiation(t *testing.T) {
 	}
 
 	blind := blind_base.ScalarExp(nonceSum)
-	decKeyTemp := MulBatched(blind_shares)
+	decKeyTemp := mulBatched(blind_shares)
 
 	if !blind.Equals(decKeyTemp) {
 		t.Errorf("Secrets do not match: %s != %s", blind, decKeyTemp)
@@ -406,14 +406,14 @@ func TestSecretExponentiation(t *testing.T) {
 
 func TestPlantextSecretSharing(t *testing.T) {
 
-	rp := RandomPoint()
+	rp := randomPoint()
 	num_shares := 10
-	blind_base := RandomPoint()
-	nonceSum := NewScalar(big.NewInt(0))
+	blind_base := randomPoint()
+	nonceSum := newScalar(big.NewInt(0))
 
-	nonces := make([]*Scalar, num_shares)
+	nonces := make([]*scalar, num_shares)
 	for i := range num_shares {
-		s := RandomScalar()
+		s := randomScalar()
 
 		nonces[i] = s
 		nonceSum = nonceSum.Add(s)

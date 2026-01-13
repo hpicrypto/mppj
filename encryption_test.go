@@ -89,10 +89,10 @@ func TestDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
-	sk, pk := PKEKeyGen()
+	sk, pk := keyGenPKE()
 
-	ciphertext := PKEEncrypt(pk, msg)
-	decryptedMsg := PKEDecrypt(sk, ciphertext)
+	ciphertext := encryptPKE(pk, msg)
+	decryptedMsg := decryptPKE(sk, ciphertext)
 	if decryptedMsg == nil {
 		t.Fatalf("Decrypt() returned nil message")
 	}
@@ -117,10 +117,10 @@ func TestReRand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
-	_, pk := PKEKeyGen()
+	_, pk := keyGenPKE()
 
-	ciphertext := PKEEncrypt(pk, msg)
-	rerandCiphertext := ReRand(pk, ciphertext)
+	ciphertext := encryptPKE(pk, msg)
+	rerandCiphertext := reRand(pk, ciphertext)
 	if rerandCiphertext == nil {
 		t.Fatalf("ReRand() returned nil ciphertext")
 	}
@@ -140,22 +140,22 @@ func TestIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
-	sk, pk := PKEKeyGen()
+	sk, pk := keyGenPKE()
 
 	// Encrypt
-	ciphertext := PKEEncrypt(pk, msg)
+	ciphertext := encryptPKE(pk, msg)
 	if ciphertext == nil {
 		t.Fatalf("Encrypt() returned nil ciphertext")
 	}
 
 	// Re-randomize
-	rerandCiphertext := ReRand(pk, ciphertext)
+	rerandCiphertext := reRand(pk, ciphertext)
 	if rerandCiphertext == nil {
 		t.Fatalf("ReRand() returned nil ciphertext")
 	}
 
 	// Decrypt
-	decryptedMsg := PKEDecrypt(sk, rerandCiphertext)
+	decryptedMsg := decryptPKE(sk, rerandCiphertext)
 	if decryptedMsg == nil {
 		t.Fatalf("Decrypt() returned nil message")
 	}
@@ -177,22 +177,22 @@ func TestPlaintext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
-	sk, pk := PKEKeyGen()
+	sk, pk := keyGenPKE()
 
 	// Encrypt
-	ciphertext := PKEEncrypt(pk, msg)
+	ciphertext := encryptPKE(pk, msg)
 	if ciphertext == nil {
 		t.Fatalf("Encrypt() returned nil ciphertext")
 	}
 
 	// Re-randomize
-	rerandCiphertext := ReRand(pk, ciphertext)
+	rerandCiphertext := reRand(pk, ciphertext)
 	if rerandCiphertext == nil {
 		t.Fatalf("ReRand() returned nil ciphertext")
 	}
 
 	// Decrypt
-	decryptedMsg := PKEDecrypt(sk, rerandCiphertext)
+	decryptedMsg := decryptPKE(sk, rerandCiphertext)
 	if decryptedMsg == nil {
 		t.Fatalf("Decrypt() returned nil message")
 	}
@@ -217,22 +217,22 @@ func TestPlaintextUUID(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create message: %v", err)
 		}
-		sk, pk := PKEKeyGen()
+		sk, pk := keyGenPKE()
 
 		// Encrypt
-		ciphertext := PKEEncrypt(pk, msg)
+		ciphertext := encryptPKE(pk, msg)
 		if ciphertext == nil {
 			t.Fatalf("Encrypt() returned nil ciphertext")
 		}
 
 		// Re-randomize
-		rerandCiphertext := ReRand(pk, ciphertext)
+		rerandCiphertext := reRand(pk, ciphertext)
 		if rerandCiphertext == nil {
 			t.Fatalf("ReRand() returned nil ciphertext")
 		}
 
 		// Decrypt
-		decryptedMsg := PKEDecrypt(sk, rerandCiphertext)
+		decryptedMsg := decryptPKE(sk, rerandCiphertext)
 		if decryptedMsg == nil {
 			t.Fatalf("Decrypt() returned nil message")
 		}
@@ -266,10 +266,10 @@ func TestSerializeDeserializeCiphertexts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
-	_, pk := PKEKeyGen()
+	_, pk := keyGenPKE()
 
 	// Encrypt
-	ciphertext := PKEEncrypt(pk, msg)
+	ciphertext := encryptPKE(pk, msg)
 	if ciphertext == nil {
 		t.Fatalf("Encrypt() returned nil ciphertext")
 	}
@@ -301,10 +301,10 @@ func TestEncryptVector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	sk, pk := PKEKeyGen()
+	sk, pk := keyGenPKE()
 
 	// Encrypt
-	ciphertexts, err := PKEEncryptVector(pk, msgBytes)
+	ciphertexts, err := encryptVectorPKE(pk, msgBytes)
 	if err != nil {
 		t.Fatalf("Encrypt() error = %v", err)
 	}
@@ -313,7 +313,7 @@ func TestEncryptVector(t *testing.T) {
 	}
 
 	// Decrypt
-	plaintext, err := PKEDecryptVector(sk, ciphertexts)
+	plaintext, err := decryptVectorPKE(sk, ciphertexts)
 	if err != nil {
 		t.Fatalf("Decrypt() error = %v", err)
 	}
@@ -331,10 +331,10 @@ func TestSerializeDeserializeCiphertextsVector(t *testing.T) {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
 
-	sk, pk := PKEKeyGen()
+	sk, pk := keyGenPKE()
 
 	// Encrypt
-	ciphertexts, err := PKEEncryptVector(pk, msgBytes)
+	ciphertexts, err := encryptVectorPKE(pk, msgBytes)
 	if err != nil {
 		t.Fatalf("Encrypt() error = %v", err)
 	}
@@ -343,7 +343,7 @@ func TestSerializeDeserializeCiphertextsVector(t *testing.T) {
 	}
 
 	// Serialize
-	serializedCiphertext, err := SerializeCiphertexts(ciphertexts)
+	serializedCiphertext, err := serializeCiphertexts(ciphertexts)
 	if err != nil {
 		t.Fatalf("Serialize() error = %v", err)
 	}
@@ -352,12 +352,12 @@ func TestSerializeDeserializeCiphertextsVector(t *testing.T) {
 	}
 
 	// Deserialize
-	deserializedCiphertext, err := DeserializeCiphertexts(serializedCiphertext)
+	deserializedCiphertext, err := deserializeCiphertexts(serializedCiphertext)
 	if err != nil {
 		t.Fatalf("Deserialize() error = %v", err)
 	}
 
-	plaintext, err := PKEDecryptVector(sk, deserializedCiphertext)
+	plaintext, err := decryptVectorPKE(sk, deserializedCiphertext)
 	if err != nil {
 		t.Fatalf("Decrypt() error = %v", err)
 	}
@@ -419,7 +419,7 @@ func TestPad31(t *testing.T) {
 }
 
 func TestPKEEncKeys(t *testing.T) {
-	sk, pk := PKEKeyGen()
+	sk, pk := keyGenPKE()
 
 	for i := range 1000 {
 		msgBytes := make([]byte, 16)
@@ -434,15 +434,15 @@ func TestPKEEncKeys(t *testing.T) {
 		}
 
 		// Encrypt
-		ciphertext := PKEEncrypt(pk, msg)
+		ciphertext := encryptPKE(pk, msg)
 		if ciphertext == nil {
 			t.Fatalf("Encrypt() returned nil ciphertext")
 		}
 
-		ciphertext = ReRand(pk, ciphertext)
+		ciphertext = reRand(pk, ciphertext)
 
 		// Decrypt
-		decryptedMsg := PKEDecrypt(sk, ciphertext)
+		decryptedMsg := decryptPKE(sk, ciphertext)
 		if decryptedMsg == nil {
 			t.Fatalf("Decrypt() returned nil message")
 		}

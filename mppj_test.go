@@ -10,24 +10,27 @@ const INTERSECTION_SIZE = 3
 
 func TestMPPJ(t *testing.T) {
 
-	sourceIDs := []SourceID{"ds1", "ds2", "ds3"}
-
-	sid := NewSessionID(3, "helper", "receiver", sourceIDs)
+	sourceIDs := []PartyID{"ds1", "ds2", "ds3"}
+	rsk, rpk := KeyGen()
+	sess, err := NewSession(sourceIDs, "helper", "receiver", rpk)
+	if err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
 
 	// Setup
 
-	helper := NewHelper(sid, sourceIDs, ROW_AMOUNT)
-	receiver := NewReceiver(sid, sourceIDs)
+	helper := NewHelper(sess)
+	receiver := NewReceiver(sess, rsk)
 
 	// Data sources do this:
 
 	tables := GenTestTables(sourceIDs, ROW_AMOUNT, INTERSECTION_SIZE)
-	encTables := make(map[SourceID]EncTable, TABLE_AMOUNT)
+	encTables := make(map[PartyID]EncTable, TABLE_AMOUNT)
 
 	for sourceID, table := range tables {
-		ds := NewDataSource(sid, receiver.GetPK()) // technically, only one data source instance is needed
+		ds := NewDataSource(sess) // technically, only one data source instance is needed
 
-		prepTable, err := ds.Prepare(receiver.GetPK(), table)
+		prepTable, err := ds.Prepare(table)
 		if err != nil {
 			t.Errorf("Error in PrepareTable")
 		}
@@ -37,7 +40,7 @@ func TestMPPJ(t *testing.T) {
 	// Send tables to helper
 	// Helper does this:
 
-	joinedTables, err := helper.Convert(receiver.recvPK, encTables)
+	joinedTables, err := helper.Convert(encTables)
 	if err != nil {
 		t.Errorf("Error in ConvertTablesMPPJ")
 	}

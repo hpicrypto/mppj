@@ -14,31 +14,35 @@ func MPPJ() {
 	fmt.Println("----- MPPJ -----")
 	fmt.Println("")
 
-	sourceIDs := []mppj.SourceID{"ds1", "ds2", "ds3"}
-	sid := mppj.NewSessionID(3, "helper", "receiver", sourceIDs)
+	sourceIDs := []mppj.PartyID{"ds1", "ds2", "ds3"}
+	rsk, rpk := mppj.KeyGen()
+	sess, err := mppj.NewSession(sourceIDs, "helper", "receiver", rpk)
+	if err != nil {
+		panic(err)
+	}
 
 	// Setup phase
 
-	receiver := mppj.NewReceiver(sid, sourceIDs)
-	ds := mppj.NewDataSource(sid, receiver.GetPK()) // technically, only one data source instance is needed
-	converter := mppj.NewHelper(sid, sourceIDs, 100)
+	receiver := mppj.NewReceiver(sess, rsk)
+	ds := mppj.NewDataSource(sess) // technically, only one data source instance is needed
+	converter := mppj.NewHelper(sess)
 
 	// Data sources do this:
 	tables := mppj.GenTestTables(sourceIDs, numRows, joinSize)
 
 	// Encrypting the tables
 
-	encTables := make(map[mppj.SourceID]mppj.EncTable, 0)
+	encTables := make(map[mppj.PartyID]mppj.EncTable, 0)
 
 	for sourceID, table := range tables {
-		encTable, _ := ds.Prepare(receiver.GetPK(), table)
+		encTable, _ := ds.Prepare(table)
 		encTables[sourceID] = encTable
 	}
 
 	// Send tables to converter
 	// Converter does this:
 
-	joinedTables, _ := converter.Convert(receiver.GetPK(), encTables)
+	joinedTables, _ := converter.Convert(encTables)
 
 	// Send tables to receiver
 	// Receive phase

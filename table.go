@@ -39,12 +39,12 @@ type EncTableWithHint []EncRowWithHint
 
 type EncValueWithHint struct {
 	val        SymmetricCiphertext
-	blindedkey Message
-	hint       Message
+	blindedkey message
+	hint       message
 }
 
 type JoinTable struct {
-	sourceids []SourceID
+	sourceids []PartyID
 	values    [][]string
 }
 
@@ -83,17 +83,17 @@ func NewTablePlain(uids []string, values []string) TablePlain {
 	return TablePlain(newTable)
 }
 
-func NewJoinTable(sourceIDs []SourceID) JoinTable {
+func NewJoinTable(sourceIDs []PartyID) JoinTable {
 
 	var newTable = JoinTable{
-		sourceids: make([]SourceID, len(sourceIDs)),
+		sourceids: make([]PartyID, len(sourceIDs)),
 		values:    make([][]string, 0),
 	}
 	copy(newTable.sourceids, sourceIDs)
 	return newTable
 }
 
-func (t *JoinTable) Insert(values map[SourceID]string) error {
+func (t *JoinTable) Insert(values map[PartyID]string) error {
 	row := make([]string, len(t.sourceids))
 	for sourceID, value := range values {
 		col := slices.Index(t.sourceids, sourceID)
@@ -121,6 +121,17 @@ func (t JoinTable) WriteTo(w *csv.Writer) error {
 	}
 	w.Flush()
 	return nil
+}
+
+func (t JoinTable) String() string {
+	// write as CSV
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	err := t.WriteTo(w)
+	if err != nil {
+		return fmt.Sprintf("error writing table: %v", err)
+	}
+	return buf.String()
 }
 
 // Equality for plain tables checks both the keys and the values
@@ -213,14 +224,14 @@ func ExpandUIDs(uids []string, amount int) []string {
 }
 
 // IntersectSimple performs a join on plain tables
-func IntersectSimple(tables map[SourceID]TablePlain, sources []SourceID) JoinTable {
+func IntersectSimple(tables map[PartyID]TablePlain, sources []PartyID) JoinTable {
 
 	// groups the values by uids
-	partJoin := make(map[string]map[SourceID]string)
+	partJoin := make(map[string]map[PartyID]string)
 	for sourceID, table := range tables {
 		for uid, val := range table {
 			if _, exists := partJoin[uid]; !exists {
-				partJoin[uid] = make(map[SourceID]string)
+				partJoin[uid] = make(map[PartyID]string)
 			}
 			partJoin[uid][sourceID] = val
 		}
@@ -250,19 +261,19 @@ func (t TablePlain) String() string {
 	return s
 }
 
-func GenTestTables(sourceIDs []SourceID, nRows, intersectionSize int) map[SourceID]TablePlain {
+func GenTestTables(sourceIDs []PartyID, nRows, intersectionSize int) map[PartyID]TablePlain {
 	intersection := make([]string, intersectionSize)
 	for i := 0; i < intersectionSize; i++ {
 		intersection[i] = fmt.Sprintf("join_key_%d", i)
 	}
-	tables := make(map[SourceID]TablePlain)
+	tables := make(map[PartyID]TablePlain)
 	for _, sourceID := range sourceIDs {
 		tables[sourceID] = GenTestTable(sourceID, nRows, intersection)
 	}
 	return tables
 }
 
-func GenTestTable(sourceId SourceID, nRows int, intersection []string) TablePlain {
+func GenTestTable(sourceId PartyID, nRows int, intersection []string) TablePlain {
 	table := make(TablePlain)
 	v := 0
 	// Add intersection rows

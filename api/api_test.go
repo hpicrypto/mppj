@@ -11,16 +11,18 @@ import (
 
 func TestSerializeMessages(t *testing.T) {
 
-	sourceIDs := []mppj.SourceID{"ds1", "ds2", "ds3"}
-
-	sid := mppj.NewSessionID(3, "helper", "receiver", sourceIDs)
+	sourceIDs := []mppj.PartyID{"ds1", "ds2", "ds3"}
+	rsk, rpk := mppj.KeyGen()
+	sess, err := mppj.NewSession(sourceIDs, "helper", "receiver", rpk)
+	if err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
 
 	// Setup
 
-	helper := mppj.NewHelper(sid, sourceIDs, 1)
-
-	receiver := mppj.NewReceiver(sid, sourceIDs)
-	source := mppj.NewDataSource(sid, receiver.GetPK())
+	helper := mppj.NewHelper(sess)
+	receiver := mppj.NewReceiver(sess, rsk)
+	source := mppj.NewDataSource(sess)
 
 	// Data sources do this:
 

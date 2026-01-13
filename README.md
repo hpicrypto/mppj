@@ -21,6 +21,9 @@ Each operation has a channel-based counterpart which enables each party to proce
 tables in a streaming fashion. The streamed and the non-streamed methods enable processing
 over multiple cores via a parameterizable number of goroutines.
 
+See the `examples/minimal/main.go` file for a minimal working program demonstrating the
+use of the types.
+
 ## Package Structure
 
 - `party_datasource.go`: the source-related operations.
