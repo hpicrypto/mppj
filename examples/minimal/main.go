@@ -28,7 +28,7 @@ func main() {
 	joinedTables := must(helper.Convert(encTables))
 
 	// Receiver extracts the joined table
-	fmt.Println(must(receiver.JoinTables(joinedTables, len(encTables))))
+	fmt.Println(must(receiver.JoinTables(joinedTables)))
 }
 
 func must[T any](arg T, err error) T {

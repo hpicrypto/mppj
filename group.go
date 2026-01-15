@@ -1,5 +1,3 @@
-// This provides an abstraction to group operations, being essetially a wrapper around the elliptic curve operations.
-// The notation is multiplicative
 package mppj
 
 import (

@@ -47,7 +47,7 @@ func TestSerializeMessages(t *testing.T) {
 		t.Fatalf("GetEncRowFromMsg failed: %v", err)
 	}
 
-	encRowWithHint, err := helper.ConvertRow(receiver.GetPK(), &encRow, 1)
+	encRowWithHint, err := helper.ConvertRow(receiver.GetPK(), &encRow, sourceIDs[0])
 	if err != nil {
 		t.Fatalf("ConvertRow failed: %v", err)
 	}

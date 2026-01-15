@@ -48,7 +48,7 @@ func MPPJ() {
 	// Receive phase
 	// Receiver does this:
 
-	intersectionMPPJ, _ := receiver.JoinTables(joinedTables, len(encTables))
+	intersectionMPPJ, _ := receiver.JoinTables(joinedTables)
 
 	fmt.Println("Tables after Join (Pseudonymized)")
 
