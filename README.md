@@ -24,7 +24,7 @@ over multiple cores via a parameterizable number of goroutines.
 
 See the [`examples/minimal/main.go`](examples/minimal/main.go) file for a minimal working
 program demonstrating the use of the types. The documentation is hosted at
-[https://pkg.go.dev/github.com/hpicrypto/mppj](pkg.go.dev).
+[pkg.go.dev](https://pkg.go.dev/github.com/hpicrypto/mppj).
 
 ## Package Structure
 
