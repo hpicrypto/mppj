@@ -120,7 +120,7 @@ func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[PartyID]string, err
 			panic(err)
 		}
 
-		encAttridValBytes, err := SymmetricDecrypt(key, dge.val)
+		encAttridValBytes, err := symmetricDecrypt(key, dge.val)
 		if err != nil {
 			panic(err)
 		}

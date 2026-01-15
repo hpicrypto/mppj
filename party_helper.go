@@ -51,8 +51,7 @@ func (h *Helper) Convert(tables map[PartyID]EncTable) (EncTableWithHint, error) 
 	return h.ConvertStream(h.rpk, encRowsTasks)
 }
 
-type tableIndex int
-
+// ConvertRowTask represents a task to convert a single encrypted row from a data source.
 type ConvertRowTask struct {
 	EncRowMsg EncRow
 	SourceID  PartyID
@@ -134,7 +133,7 @@ func (h *Helper) blindAndHint(rpk PublicKey, joinid *Ciphertext, value []*Cipher
 		return nil, nil, nil, err
 	}
 
-	ad, err := SymmetricEncrypt(key, append([]byte{byte(tindex)}, serialized...)) // append the table pos for in order reconstruction
+	ad, err := symmetricEncrypt(key, append([]byte{byte(tindex)}, serialized...)) // append the table pos for in order reconstruction
 	if err != nil {
 		return nil, nil, nil, err
 	}

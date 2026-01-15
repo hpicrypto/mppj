@@ -12,14 +12,14 @@ import (
 )
 
 func TestEncryptDecrypt(t *testing.T) {
-	key := make([]byte, KEYSIZE)
+	key := make([]byte, KeySize)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		t.Fatalf("Failed to generate key: %v", err)
 	}
 
 	plaintext := []byte("This is a secret message")
 
-	ciphertext, err := SymmetricEncrypt(key, plaintext)
+	ciphertext, err := symmetricEncrypt(key, plaintext)
 	if err != nil {
 		t.Errorf("encrypt() error = %v", err)
 	}
@@ -27,7 +27,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Fatalf("encrypt() returned empty ciphertext")
 	}
 
-	decrypted, err := SymmetricDecrypt(key, ciphertext)
+	decrypted, err := symmetricDecrypt(key, ciphertext)
 	if err != nil {
 		t.Errorf("decrypt() error = %v", err)
 	}
@@ -37,19 +37,19 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestEncryptDecrypt_EmptyPlaintext(t *testing.T) {
-	key := make([]byte, KEYSIZE)
+	key := make([]byte, KeySize)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		t.Fatalf("Failed to generate key: %v", err)
 	}
 
 	plaintext := []byte("")
 
-	ciphertext, err := SymmetricEncrypt(key, plaintext)
+	ciphertext, err := symmetricEncrypt(key, plaintext)
 	if err != nil {
 		t.Errorf("encrypt() error = %v", err)
 	}
 
-	decrypted, err := SymmetricDecrypt(key, ciphertext)
+	decrypted, err := symmetricDecrypt(key, ciphertext)
 	if err != nil {
 		t.Errorf("decrypt() error = %v", err)
 	}
@@ -60,23 +60,23 @@ func TestEncryptDecrypt_EmptyPlaintext(t *testing.T) {
 }
 
 func TestSymmetricEncryptDecrypt(t *testing.T) {
-	key := make([]byte, KEYSIZE)
+	key := make([]byte, KeySize)
 	_, err := io.ReadFull(rand.Reader, key)
 	require.NoError(t, err, "Failed to generate key")
 
-	invalidKey := make([]byte, KEYSIZE)
+	invalidKey := make([]byte, KeySize)
 	_, err = io.ReadFull(rand.Reader, invalidKey)
 	require.NoError(t, err, "Failed to generate invalid key")
 
 	plaintext := []byte("This is a secret message")
 
-	ciphertext, err := SymmetricEncrypt(key, plaintext)
-	require.NoError(t, err, "SymmetricEncrypt() error")
-	require.NotEmpty(t, ciphertext, "SymmetricEncrypt() returned empty ciphertext")
+	ciphertext, err := symmetricEncrypt(key, plaintext)
+	require.NoError(t, err, "symmetricEncrypt() error")
+	require.NotEmpty(t, ciphertext, "symmetricEncrypt() returned empty ciphertext")
 
-	decryptedText, err := SymmetricDecrypt(key, ciphertext)
-	require.NoError(t, err, "SymmetricDecrypt() error")
-	require.Equal(t, plaintext, decryptedText, "SymmetricDecrypt() did not return the original plaintext")
+	decryptedText, err := symmetricDecrypt(key, ciphertext)
+	require.NoError(t, err, "symmetricDecrypt() error")
+	require.Equal(t, plaintext, decryptedText, "symmetricDecrypt() did not return the original plaintext")
 }
 
 func TestDecrypt(t *testing.T) {
@@ -208,7 +208,7 @@ func TestPlaintext(t *testing.T) {
 }
 
 func TestPlaintextUUID(t *testing.T) {
-	for i := range PAYLOADSIZE + 1 { // byte length of curve modulus
+	for i := range MaxValueSize + 1 { // byte length of curve modulus
 		if i == 0 {
 			continue
 		}
@@ -242,7 +242,7 @@ func TestPlaintextUUID(t *testing.T) {
 			t.Fatalf("Failed to get message bytes: %v", err)
 		}
 
-		if i <= PAYLOADSIZE {
+		if i <= MaxValueSize {
 			if msgstr != msg_str {
 				t.Errorf("Integration test failed: Decrypt() = %v, want %v, iteration %v", msgstr, msg_str, i)
 			}

@@ -4,14 +4,9 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"math/big"
 	"slices"
 	"strconv"
 	"strings"
-
-	"crypto/rand"
-
-	"github.com/google/uuid"
 )
 
 // TablePlain represents a plain table with UID as key and value as string.
@@ -191,47 +186,6 @@ func (t1 *JoinTable) EqualContents(t2 *JoinTable) bool {
 	}
 
 	return true
-}
-
-// GenUIDs generates a specified amount of unique UUIDs.
-func GenUIDs(amount int) []string {
-	uids := make(map[string]struct{})
-	for len(uids) < amount {
-		uid := uuid.New().String()
-		uids[uid] = struct{}{}
-	}
-
-	uidList := make([]string, 0, len(uids))
-	for uid := range uids {
-		uidList = append(uidList, uid)
-	}
-	return uidList
-}
-
-// ExpandUIDs expands a list of UIDs to a specified amount by adding random UIDs.
-func ExpandUIDs(uids []string, amount int) []string {
-	uidSet := make(map[string]struct{})
-	for _, uid := range uids {
-		uidSet[uid] = struct{}{}
-	}
-
-	for len(uidSet) < amount {
-		coin, err := rand.Int(rand.Reader, big.NewInt(2))
-		if err != nil {
-			panic(fmt.Sprintf("RNG error: %v", err)) // other functions like RandomPoint also panic when RNG fails
-		}
-		if coin.Int64() == 0 && len(uids) > 0 {
-			uidSet[uids[0]] = struct{}{}
-			uids = uids[1:]
-		}
-		uidSet[uuid.New().String()] = struct{}{}
-	}
-
-	expandedUIDs := make([]string, 0, len(uidSet))
-	for uid := range uidSet {
-		expandedUIDs = append(expandedUIDs, uid)
-	}
-	return expandedUIDs
 }
 
 // IntersectPlain performs a join on plain tables
