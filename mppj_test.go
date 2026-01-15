@@ -54,7 +54,7 @@ func TestMPPJ(t *testing.T) {
 	}
 
 	// Check results
-	joinedTablesPlain := IntersectSimple(tables, sourceIDs)
+	joinedTablesPlain := IntersectPlain(tables, sourceIDs)
 
 	if !joinedTablesPlain.EqualContents(&intersectionMPPJ) {
 		t.Errorf("Expected tables' contents to be equal, but they are not: \n Plain: \n%s \n MPPJ: \n%s", joinedTablesPlain, intersectionMPPJ)

@@ -89,11 +89,17 @@ func (r *Receiver) GetSK() SecretKey {
 	return r.recvSK
 }
 
+type encValueWithHint struct {
+	val        SymmetricCiphertext
+	blindedkey message
+	hint       message
+}
+
 func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[PartyID]string, error) {
-	decGroup := make([]EncValueWithHint, len(group))
+	decGroup := make([]encValueWithHint, len(group))
 
 	for i, ge := range group {
-		decGroup[i] = EncValueWithHint{
+		decGroup[i] = encValueWithHint{
 			val:        ge.CVal,
 			blindedkey: *oprfUnblind(r.recvSK.bsk, &ge.CValKey),
 			hint:       *oprfUnblind(r.recvSK.bsk, &ge.CHint),

@@ -14,20 +14,27 @@ import (
 	"github.com/google/uuid"
 )
 
+// TablePlain represents a plain table with UID as key and value as string.
+// It is the protocol input type for data sources.
 type TablePlain map[string]string
 
+// TableRow represents a single row in a plain table.
 type TableRow struct {
 	uid string
 	val string
 }
 
+// EncRow represents a single encrypted row with encrypted UID and encrypted value(s).
 type EncRow struct {
 	Cuid *Ciphertext
 	Cval []*Ciphertext
 }
 
+// EncTable represents an encrypted table as a slice of encrypted rows.
+// It is the output type for the data source and the input type for the helper.
 type EncTable []EncRow
 
+// EncRowWithHint represents a single encrypted row after processing by the helper.
 type EncRowWithHint struct {
 	Cnyme   Ciphertext
 	CVal    SymmetricCiphertext
@@ -35,23 +42,23 @@ type EncRowWithHint struct {
 	CHint   Ciphertext
 }
 
+// EncTableWithHint represents an encrypted table after processing by the helper.
+// It is the output type for the helper and the input type for the receiver.
 type EncTableWithHint []EncRowWithHint
 
-type EncValueWithHint struct {
-	val        SymmetricCiphertext
-	blindedkey message
-	hint       message
-}
-
+// JoinTable represents the final joined table produced by the receiver.
+// It is the output type for the receiver.
 type JoinTable struct {
 	sourceids []PartyID
 	values    [][]string
 }
 
+// Len returns the number of rows in the joined table.
 func (t JoinTable) Len() int {
 	return len(t.values)
 }
 
+// MarshalBinary serializes an EncRow into a byte slice.
 func (er EncRow) MarshalBinary() ([]byte, error) {
 	var buf bytes.Buffer
 	cuidBytes, err := er.Cuid.Serialize()
@@ -83,6 +90,7 @@ func NewTablePlain(uids []string, values []string) TablePlain {
 	return TablePlain(newTable)
 }
 
+// NewJoinTable creates a new empty JoinTable for the given source IDs.
 func NewJoinTable(sourceIDs []PartyID) JoinTable {
 
 	var newTable = JoinTable{
@@ -93,6 +101,7 @@ func NewJoinTable(sourceIDs []PartyID) JoinTable {
 	return newTable
 }
 
+// Insert adds a new row to the joined table with the given values mapped by source ID.
 func (t *JoinTable) Insert(values map[PartyID]string) error {
 	row := make([]string, len(t.sourceids))
 	for sourceID, value := range values {
@@ -106,6 +115,7 @@ func (t *JoinTable) Insert(values map[PartyID]string) error {
 	return nil
 }
 
+// WriteTo writes the joined table to a CSV writer.
 func (t JoinTable) WriteTo(w *csv.Writer) error {
 	sourceIDsStr := make([]string, len(t.sourceids))
 	for i, sid := range t.sourceids {
@@ -123,6 +133,7 @@ func (t JoinTable) WriteTo(w *csv.Writer) error {
 	return nil
 }
 
+// String returns the joined table as a CSV-formatted string.
 func (t JoinTable) String() string {
 	// write as CSV
 	var buf bytes.Buffer
@@ -134,7 +145,7 @@ func (t JoinTable) String() string {
 	return buf.String()
 }
 
-// Equality for plain tables checks both the keys and the values
+// Equal checks both the keys and the values for plain tables.
 func (t1 *TablePlain) Equal(t2 *TablePlain) bool {
 	if len(*t1) != len(*t2) {
 		return false
@@ -153,7 +164,7 @@ func (t1 *TablePlain) Equal(t2 *TablePlain) bool {
 	return true
 }
 
-// Equality for joined tables only checks the values, the keys may be different
+// EqualContents checks only the contents of the joined tables, ignoring the order of rows.
 func (t1 *JoinTable) EqualContents(t2 *JoinTable) bool {
 
 	if t1.Len() != t2.Len() {
@@ -223,8 +234,8 @@ func ExpandUIDs(uids []string, amount int) []string {
 	return expandedUIDs
 }
 
-// IntersectSimple performs a join on plain tables
-func IntersectSimple(tables map[PartyID]TablePlain, sources []PartyID) JoinTable {
+// IntersectPlain performs a join on plain tables
+func IntersectPlain(tables map[PartyID]TablePlain, sources []PartyID) JoinTable {
 
 	// groups the values by uids
 	partJoin := make(map[string]map[PartyID]string)
@@ -246,6 +257,7 @@ func IntersectSimple(tables map[PartyID]TablePlain, sources []PartyID) JoinTable
 	return joined
 }
 
+// String returns the plain table as a formatted string.
 func (t TablePlain) String() string {
 	var s string
 	s += "UID " + " " + " Value\n"
@@ -261,6 +273,7 @@ func (t TablePlain) String() string {
 	return s
 }
 
+// GenTestTables generates test tables for the given source IDs with specified number of rows and intersection size.
 func GenTestTables(sourceIDs []PartyID, nRows, intersectionSize int) map[PartyID]TablePlain {
 	intersection := make([]string, intersectionSize)
 	for i := 0; i < intersectionSize; i++ {
@@ -273,6 +286,7 @@ func GenTestTables(sourceIDs []PartyID, nRows, intersectionSize int) map[PartyID
 	return tables
 }
 
+// GenTestTable generates a test table for a given source ID with specified number of rows and intersection UIDs.
 func GenTestTable(sourceId PartyID, nRows int, intersection []string) TablePlain {
 	table := make(TablePlain)
 	v := 0
