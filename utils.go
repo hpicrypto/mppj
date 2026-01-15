@@ -33,6 +33,7 @@ func NewSessionID(sources []PartyID, helper, receiver string) SessionID {
 	return sid
 }
 
+// Session represents the public parameters of an MPPJ session.
 type Session struct {
 	ID         SessionID
 	Sources    []PartyID
@@ -41,7 +42,8 @@ type Session struct {
 	ReceiverPK PublicKey
 }
 
-func NewSession(sources []PartyID, helper, receiver PartyID, receiverPK PublicKey) (*Session, error) {
+// NewSessionWithID creates a new Session with the given ID and public parameters.
+func NewSessionWithID(sid SessionID, sources []PartyID, helper, receiver PartyID, receiverPK PublicKey) (*Session, error) {
 	if len(sources) < 2 {
 		return nil, fmt.Errorf("at least two sources required")
 	}
@@ -49,12 +51,17 @@ func NewSession(sources []PartyID, helper, receiver PartyID, receiverPK PublicKe
 		return nil, fmt.Errorf("helper and receiver must be different")
 	}
 	return &Session{
-		ID:         NewSessionID(sources, string(helper), string(receiver)),
+		ID:         sid,
 		Sources:    sources,
 		Helper:     helper,
 		Receiver:   receiver,
 		ReceiverPK: receiverPK,
 	}, nil
+}
+
+// NewSession creates a new Session, generating the session ID from the given public parameters.
+func NewSession(sources []PartyID, helper, receiver PartyID, receiverPK PublicKey) (*Session, error) {
+	return NewSessionWithID(NewSessionID(sources, string(helper), string(receiver)), sources, helper, receiver, receiverPK)
 }
 
 type contextKey string
