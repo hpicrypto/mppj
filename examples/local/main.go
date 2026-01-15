@@ -57,7 +57,7 @@ func MPPJ() {
 	// Check results
 
 	// Plaintext join
-	joinedTablesPlain := mppj.IntersectSimple(tables, sourceIDs)
+	joinedTablesPlain := mppj.IntersectPlain(tables, sourceIDs)
 
 	fmt.Println("Intersection of tables (plaintext):")
 	fmt.Println(joinedTablesPlain, "\n length ", joinedTablesPlain.Len())
