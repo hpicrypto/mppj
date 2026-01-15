@@ -48,7 +48,7 @@ func TestMPPJ(t *testing.T) {
 	// Send tables to receiver
 	// Receiver does this:
 
-	intersectionMPPJ, err := receiver.JoinTables(joinedTables, len(encTables))
+	intersectionMPPJ, err := receiver.JoinTables(joinedTables)
 	if err != nil {
 		t.Errorf("Error in JoinTablesMPPJ")
 	}

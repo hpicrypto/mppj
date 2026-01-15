@@ -47,7 +47,7 @@ func BenchmarkHelperConvertRow(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := helper.ConvertRow(rpk, &encRow, 1)
+		_, err := helper.ConvertRow(rpk, &encRow, sourceIDs[0])
 		if err != nil {
 			b.Fatalf("ConvertRow failed: %v", err)
 		}
@@ -135,7 +135,7 @@ func BenchmarkFullJoin(b *testing.B) {
 				// Send tables to receiver
 				// Receiver does this:
 
-				receiver.JoinTables(joinedTables, len(encTables))
+				receiver.JoinTables(joinedTables)
 			}
 		})
 

@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+// Helper represents a helper party in the MPPJ protocol, for a given session. Its main method is Convert, which
+// converts encrypted tables from data sources into a format suitable for joining by the receiver.
 type Helper struct {
 	sid           []byte
 	sourceIndices map[PartyID]int
@@ -18,45 +20,111 @@ type Helper struct {
 	padKey       *scalar
 }
 
-// NewHelper creates a new Helper with the given key.
+// NewHelper creates a new Helper for the given session.
 func NewHelper(sess *Session) *Helper {
 	c := &Helper{sid: sess.ID, sourceIndices: make(map[PartyID]int), rpk: sess.ReceiverPK}
 	for i, source := range sess.Sources {
 		c.sourceIndices[source] = i
 	}
-	c.resetKey()
-	c.genNonces(len(sess.Sources))
+	c.convK = oprfKeyGen()
+	c.padKeyShares, c.padKey = c.genNonces(len(sess.Sources))
 	return c
 }
 
-// resetKey generates a new  random key for the Helper.
-func (h *Helper) resetKey() {
-	k := oprfKeyGen()
-	h.convK = k
+// Convert converts the encrypted tables from data sources into a format suitable for joining by the receiver.
+func (h *Helper) Convert(tables map[PartyID]EncTable) (EncTableWithHint, error) {
+
+	encRowsTasks := make(chan ConvertRowTask)
+
+	go func() {
+		for sourceID, table := range tables {
+			for _, row := range table {
+				encRowsTasks <- ConvertRowTask{
+					EncRowMsg: EncRow{Cuid: row.Cuid, Cval: row.Cval},
+					SourceID:  sourceID,
+				}
+			}
+		}
+		close(encRowsTasks)
+	}()
+
+	return h.ConvertStream(h.rpk, encRowsTasks)
 }
 
-func (h *Helper) getK() *oprfKey {
-	return h.convK
+type tableIndex int
+
+type ConvertRowTask struct {
+	EncRowMsg EncRow
+	SourceID  PartyID
 }
 
-// ResetKey generates a new  random key for the Helper.
-func (h *Helper) genNonces(tableAmount int) {
-	nonceSum := newScalar(big.NewInt(0))
+// ConvertStream is the streaming version of [Convert]. It reads encrypted rows from the encRowsTasks channel,
+// processes them, and returns the converted table when all the rows have been processed. It is optionally possible to specify
+// the number of goroutines workers to use.
+func (h *Helper) ConvertStream(rpk PublicKey, encRowsTasks chan ConvertRowTask, goroutines ...int) (EncTableWithHint, error) {
 
-	nonces := make([]*scalar, tableAmount)
-	for i := range tableAmount {
-		s := randomScalar()
-
-		nonces[i] = s
-		nonceSum = nonceSum.Add(s)
+	if h.padKey == nil || h.padKeyShares == nil {
+		return nil, errors.New("nonceerr, Nonces not generated. Please call GenNonces() before calling this function")
 	}
 
-	h.padKeyShares = nonces
-	h.padKey = nonceSum
+	n := runtime.NumCPU()
+	if len(goroutines) > 0 && goroutines[0] > 0 {
+		n = goroutines[0]
+	}
 
+	res := make(EncTableWithHint, 0)
+	mu := new(sync.Mutex)
+
+	var wg sync.WaitGroup
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for encRow := range encRowsTasks {
+				convRow, err := h.ConvertRow(rpk, &encRow.EncRowMsg, encRow.SourceID)
+				if err != nil {
+					panic(err)
+				}
+				mu.Lock()
+				res = append(res, *convRow)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	rand.Shuffle(len(res), func(i, j int) { // TODO: use proper RNG
+		res[i], res[j] = res[j], res[i]
+	})
+
+	return res, nil
 }
 
-// blindAndHint produces an "ad" ciphertext, a blinded key, and a hint
+// ConvertRow converts a single row `r` received from datasource sourceID.
+func (h *Helper) ConvertRow(rpk PublicKey, r *EncRow, sourceID PartyID) (*EncRowWithHint, error) {
+
+	joinid := *oprfEval(h.convK, rpk.bpk, r.Cuid) // ReRand internally
+
+	ad, blindedkey, hint, err := h.blindAndHint(rpk, &joinid, r.Cval, h.sourceIndices[sourceID])
+	if err != nil {
+		panic(err)
+	}
+	return &EncRowWithHint{Cnyme: joinid, CVal: ad, CValKey: *blindedkey, CHint: *hint}, nil
+}
+
+func (h *Helper) genNonces(nSources int) ([]*scalar, *scalar) {
+
+	nonces := make([]*scalar, nSources)
+	nonceSum := newScalar(big.NewInt(0))
+	for i := range nSources {
+		nonces[i] = randomScalar()
+		nonceSum = nonceSum.Add(nonces[i])
+	}
+
+	return nonces, nonceSum
+}
+
 func (h *Helper) blindAndHint(rpk PublicKey, joinid *Ciphertext, value []*Ciphertext, tindex int) ([]byte, *Ciphertext, *Ciphertext, error) {
 
 	rp, key := RandomKeyFromPoint(h.sid)
@@ -77,77 +145,4 @@ func (h *Helper) blindAndHint(rpk PublicKey, joinid *Ciphertext, value []*Cipher
 	hint := oprfEval((*oprfKey)(h.padKeyShares[tindex]), rpk.bpk, joinid) // ReRand internally
 
 	return ad, blindkey, hint, nil
-}
-
-// Convert performs DH-PRF on the hashed identifiers, blinds the data, then rerandomizes and shuffles all ciphertexts. GenNonces does not neet to be run before this function.
-func (h *Helper) Convert(tables map[PartyID]EncTable) (EncTableWithHint, error) {
-
-	encRowsTasks := make(chan ConvertRowTask)
-
-	go func() {
-		for sourceID, table := range tables {
-			for _, row := range table {
-				encRowsTasks <- ConvertRowTask{
-					EncRowMsg:  EncRow{Cuid: row.Cuid, Cval: row.Cval},
-					TableIndex: TableIndex(h.sourceIndices[sourceID]),
-				}
-			}
-		}
-		close(encRowsTasks)
-	}()
-
-	return h.ConvertStream(h.rpk, encRowsTasks)
-}
-
-type TableIndex int
-
-type ConvertRowTask struct {
-	EncRowMsg  EncRow
-	TableIndex TableIndex
-}
-
-func (h *Helper) ConvertStream(rpk PublicKey, encRowsTasks chan ConvertRowTask) (EncTableWithHint, error) {
-
-	if h.padKey == nil || h.padKeyShares == nil {
-		return nil, errors.New("nonceerr, Nonces not generated. Please call GenNonces() before calling this function")
-	}
-
-	res := make(EncTableWithHint, 0)
-	mu := new(sync.Mutex)
-
-	var wg sync.WaitGroup
-	for range runtime.NumCPU() {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for encRow := range encRowsTasks {
-				convRow, err := h.ConvertRow(rpk, &encRow.EncRowMsg, int(encRow.TableIndex))
-				if err != nil {
-					panic(err)
-				}
-				mu.Lock()
-				res = append(res, *convRow)
-				mu.Unlock()
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	rand.Shuffle(len(res), func(i, j int) { // TODO: use proper RNG
-		res[i], res[j] = res[j], res[i]
-	})
-
-	return res, nil
-}
-
-func (h *Helper) ConvertRow(rpk PublicKey, r *EncRow, rid int) (*EncRowWithHint, error) {
-
-	joinid := *oprfEval(h.convK, rpk.bpk, r.Cuid) // ReRand internally
-
-	ad, blindedkey, hint, err := h.blindAndHint(rpk, &joinid, r.Cval, rid)
-	if err != nil {
-		panic(err)
-	}
-	return &EncRowWithHint{Cnyme: joinid, CVal: ad, CValKey: *blindedkey, CHint: *hint}, nil
 }

@@ -7,11 +7,14 @@ import (
 	"sync"
 )
 
+// DataSource represents a data source party in the MPPJ protocol, for a given session.
+// Its main method is Prepare, which prepares a plaintext table for joining.
 type DataSource struct {
 	sid []byte
 	rpk PublicKey
 }
 
+// NewDataSource creates a new DataSource for the given session.
 func NewDataSource(sess *Session) *DataSource {
 	return &DataSource{sid: sess.ID, rpk: sess.ReceiverPK}
 }
@@ -38,8 +41,9 @@ func (s *DataSource) Prepare(table TablePlain) (EncTable, error) {
 	return preparedTable, nil
 }
 
-// Prepare prepares a table for joining by adding hashing the UIDs and encrypting its contents towards the receiver.
-func (s *DataSource) PrepareStream(table TablePlain, ncpu ...int) (encRows <-chan EncRow, err error) {
+// PrepareStream is the streaming version of [Prepare]. It sends encrypted rows through the encRows channel,
+// as they are processed. It is optionally possible to specify the number of goroutines workers to use.
+func (s *DataSource) PrepareStream(table TablePlain, goroutines ...int) (encRows <-chan EncRow, err error) {
 	var wg sync.WaitGroup
 
 	rows := make(chan TableRow, len(table))
@@ -48,8 +52,8 @@ func (s *DataSource) PrepareStream(table TablePlain, ncpu ...int) (encRows <-cha
 	//fmt.Printf("tasks: %d\n", len(table))
 
 	n := runtime.NumCPU()
-	if len(ncpu) > 0 && ncpu[0] > 0 {
-		n = ncpu[0]
+	if len(goroutines) > 0 && goroutines[0] > 0 {
+		n = goroutines[0]
 	}
 
 	for range n {
@@ -88,6 +92,7 @@ func (s *DataSource) PrepareStream(table TablePlain, ncpu ...int) (encRows <-cha
 	return encRowsChan, nil
 }
 
+// ProcessRow processes a single row, returning the encrypted UID and encrypted value.
 func (s *DataSource) ProcessRow(uid, val string) (cuid *Ciphertext, cval []*Ciphertext, err error) {
 	cuid = oprfBlind(s.rpk.bpk, []byte(uid), s.sid)
 	cval, err = encryptVectorPKE(s.rpk.epk, []byte(val))

@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+// Receiver represents the receiver party in the MPPJ protocol, for a given session. Its main method is JoinTables, which
+// joins the converted encrypted tables from the helper.
 type Receiver struct {
 	sid       []byte
 	sourceIDs []PartyID
@@ -14,8 +16,8 @@ type Receiver struct {
 	recvPK    PublicKey
 }
 
-// NewReceiver creates a new receiver
-func NewReceiver(sess *Session, sk SecretKey) *Receiver { // TODO probably we don't want this one
+// NewReceiver creates a new receiver for the given session.
+func NewReceiver(sess *Session, sk SecretKey) *Receiver {
 	r := &Receiver{
 		sid:       sess.ID,
 		sourceIDs: make([]PartyID, len(sess.Sources)),
@@ -26,16 +28,8 @@ func NewReceiver(sess *Session, sk SecretKey) *Receiver { // TODO probably we do
 	return r
 }
 
-func (r *Receiver) GetPK() PublicKey {
-	return r.recvPK
-}
-
-func (r *Receiver) getSK() SecretKey {
-	return r.recvSK
-}
-
-// JoinTables joins the tables using the MPPJ protocol.
-func (r *Receiver) JoinTables(joinedTables EncTableWithHint, tableAmount int) (JoinTable, error) {
+// JoinTables extracts the intersection from the joined tables received from the helper.
+func (r *Receiver) JoinTables(joinedTables EncTableWithHint) (JoinTable, error) {
 
 	encrows := make(chan EncRowWithHint, len(joinedTables))
 
@@ -46,17 +40,25 @@ func (r *Receiver) JoinTables(joinedTables EncTableWithHint, tableAmount int) (J
 		}
 	}()
 
-	return r.JoinTablesStream(encrows, tableAmount)
+	return r.JoinTablesStream(encrows)
 
 }
 
-func (r *Receiver) JoinTablesStream(in chan EncRowWithHint, numTable int) (JoinTable, error) {
+// JoinTablesStream is the streaming version of [JoinTables]. It reads encrypted rows from the in channel,
+// processes them, and returns the joined table when all the rows have been processed. It is optionally possible to specify
+// the number of goroutines workers to use.
+func (r *Receiver) JoinTablesStream(in chan EncRowWithHint, goroutines ...int) (JoinTable, error) {
+
+	n := runtime.NumCPU()
+	if len(goroutines) > 0 && goroutines[0] > 0 {
+		n = goroutines[0]
+	}
 
 	groups := make(map[string][]EncRowWithHint)
 
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
-	for range runtime.NumCPU() {
+	for range n {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -75,6 +77,16 @@ func (r *Receiver) JoinTablesStream(in chan EncRowWithHint, numTable int) (JoinT
 	wg.Wait()
 
 	return r.intersectHint(groups)
+}
+
+// GetPK returns the receiver's public key.
+func (r *Receiver) GetPK() PublicKey {
+	return r.recvPK
+}
+
+// GetSK returns the receiver's secret key.
+func (r *Receiver) GetSK() SecretKey {
+	return r.recvSK
 }
 
 func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[PartyID]string, error) {
