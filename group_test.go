@@ -27,7 +27,7 @@ func BenchmarkEmbed(b *testing.B) {
 	})
 
 	b.Run("Ours", func(b *testing.B) {
-		msg, err := NewMessageFromBytes(msg)
+		msg, err := newMessageFromBytes(msg)
 		if err != nil {
 			panic(err)
 		}
@@ -56,7 +56,7 @@ func TestNewMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg, err := NewMessageFromBytes(tt.msgBytes)
+			msg, err := newMessageFromBytes(tt.msgBytes)
 			if err != nil && !tt.wantErr {
 				t.Errorf("NewMessage() error = %v, want nil", err)
 			}
@@ -79,7 +79,7 @@ func TestGetMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	msg, err := NewMessageFromBytes(msgBytes)
+	msg, err := newMessageFromBytes(msgBytes)
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestGetMessage(t *testing.T) {
 }
 
 func TestRandomMsg(t *testing.T) {
-	msg, err := RandomMsg()
+	msg, err := randomMsg()
 	if err != nil {
 		t.Errorf("RandomMsg() error = %v", err)
 	}
@@ -111,21 +111,21 @@ func TestScalarMul(t *testing.T) {
 	}{
 		{
 			name: "Scalar multiplication with base point",
-			a:    Gen(),
+			a:    gen(),
 			b:    newScalar(big.NewInt(2)),
-			want: Gen().ScalarExp(newScalar(big.NewInt(2))),
+			want: gen().scalarExp(newScalar(big.NewInt(2))),
 		},
 		{
 			name: "Scalar multiplication with one",
-			a:    Gen(),
+			a:    gen(),
 			b:    newScalar(big.NewInt(1)),
-			want: Gen(),
+			want: gen(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.a.ScalarExp(tt.b)
+			got := tt.a.scalarExp(tt.b)
 			if !got.Equals(tt.want) {
 				t.Errorf("ScalarMul() = %v, want %v", got, tt.want)
 			}
@@ -150,27 +150,27 @@ func TestAdd(t *testing.T) {
 	}{
 		{
 			name: "Add base point to itself",
-			a:    Gen(),
-			b:    Gen(),
-			want: Mul(Gen(), Gen()),
+			a:    gen(),
+			b:    gen(),
+			want: mul(gen(), gen()),
 		},
 		{
 			name: "Add base point to zero point",
-			a:    Gen(),
-			b:    Identity(),
-			want: Gen(),
+			a:    gen(),
+			b:    identity(),
+			want: gen(),
 		},
 		{
 			name: "Add zero point to base point",
-			a:    Identity(),
-			b:    Gen(),
-			want: Gen(),
+			a:    identity(),
+			b:    gen(),
+			want: gen(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Mul(tt.a, tt.b); !got.Equals(tt.want) {
+			if got := mul(tt.a, tt.b); !got.Equals(tt.want) {
 				t.Errorf("Add() = %v, want %v", got, tt.want)
 			}
 		})
@@ -185,14 +185,14 @@ func TestInvert(t *testing.T) {
 	}{
 		{
 			name:  "Invert base point",
-			point: Gen(),
-			want:  BaseExp(newScalar(big.NewInt(1)).Neg()),
+			point: gen(),
+			want:  baseExp(newScalar(big.NewInt(1)).neg()),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.point.Invert(); !got.Equals(tt.want) {
+			if got := tt.point.invert(); !got.Equals(tt.want) {
 				t.Errorf("Invert() = %v, want %v", got, tt.want)
 			}
 		})
@@ -202,12 +202,12 @@ func TestInvert(t *testing.T) {
 func TestInvert2(t *testing.T) {
 	point := randomPoint()
 
-	inverted := point.Invert()
+	inverted := point.invert()
 	if inverted == nil {
 		t.Fatalf("Invert() returned nil point")
 	}
 
-	if !Mul(Mul(point, inverted), Gen()).Equals(Gen()) {
+	if !mul(mul(point, inverted), gen()).Equals(gen()) {
 		t.Errorf("Invert() failed to invert point")
 	}
 }
@@ -215,12 +215,12 @@ func TestInvert2(t *testing.T) {
 func TestInvert3(t *testing.T) {
 	point := randomPoint()
 
-	inverted := point.Invert()
+	inverted := point.invert()
 	if inverted == nil {
 		t.Fatalf("Invert() returned nil point")
 	}
 
-	if !Mul(Mul(point, Gen()), inverted).Equals(Gen()) {
+	if !mul(mul(point, gen()), inverted).Equals(gen()) {
 		t.Errorf("Invert() failed to invert point")
 	}
 }
@@ -231,7 +231,7 @@ func TestEncrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	msg, err := NewMessageFromBytes(msgBytes)
+	msg, err := newMessageFromBytes(msgBytes)
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -249,8 +249,8 @@ func TestEncrypt(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
-	a := Gen()
-	b := Gen()
+	a := gen()
+	b := gen()
 	if !a.Equals(b) {
 		t.Errorf("Equals() = false, want true")
 	}
@@ -267,7 +267,7 @@ func TestSerializeDeserializePoint(t *testing.T) {
 	}
 
 	// Deserialize the point
-	deserializedPoint := NewPoint()
+	deserializedPoint := newPoint()
 
 	err = deserializedPoint.UnmarshalBinary(serializedPoint)
 	if err != nil {
@@ -336,9 +336,9 @@ func TestScalarAddition(t *testing.T) {
 
 	s2 := randomScalar()
 
-	s3 := s1.Add(s2)
+	s3 := s1.add(s2)
 
-	if !s3.Equals(s1.Add(s2)) {
+	if !s3.Equals(s1.add(s2)) {
 		t.Errorf("Addition failed: %s + %s != %s", s1, s2, s3)
 	}
 }
@@ -349,10 +349,10 @@ func TestScalarAdditionExp(t *testing.T) {
 		s1 := randomScalar()
 		s2 := randomScalar()
 
-		s3 := s1.Add(s2)
+		s3 := s1.add(s2)
 
-		if !BaseExp(s3).Equals(Mul(BaseExp(s2), BaseExp(s1))) {
-			t.Errorf("Addition %d failed: %s + %s != %s", i, BaseExp(s3), BaseExp(s2), BaseExp(s1))
+		if !baseExp(s3).Equals(mul(baseExp(s2), baseExp(s1))) {
+			t.Errorf("Addition %d failed: %s + %s != %s", i, baseExp(s3), baseExp(s2), baseExp(s1))
 		}
 	}
 }
@@ -368,11 +368,11 @@ func TestSecretExponentiationGen(t *testing.T) {
 		s := randomScalar()
 
 		nonces[i] = s.Copy()
-		blind_shares[i] = BaseExp(nonces[i].Copy())
-		nonceSum = nonceSum.Add(nonces[i].Copy())
+		blind_shares[i] = baseExp(nonces[i].Copy())
+		nonceSum = nonceSum.add(nonces[i].Copy())
 	}
 
-	blind := BaseExp(nonceSum)
+	blind := baseExp(nonceSum)
 	decKeyTemp := mulBatched(blind_shares)
 
 	if !blind.Equals(decKeyTemp) {
@@ -392,11 +392,11 @@ func TestSecretExponentiation(t *testing.T) {
 		s := randomScalar()
 
 		nonces[i] = s
-		blind_shares[i] = blind_base.ScalarExp(s)
-		nonceSum = nonceSum.Add(s)
+		blind_shares[i] = blind_base.scalarExp(s)
+		nonceSum = nonceSum.add(s)
 	}
 
-	blind := blind_base.ScalarExp(nonceSum)
+	blind := blind_base.scalarExp(nonceSum)
 	decKeyTemp := mulBatched(blind_shares)
 
 	if !blind.Equals(decKeyTemp) {
@@ -416,19 +416,19 @@ func TestPlantextSecretSharing(t *testing.T) {
 		s := randomScalar()
 
 		nonces[i] = s
-		nonceSum = nonceSum.Add(s)
+		nonceSum = nonceSum.add(s)
 	}
 
-	blind := blind_base.ScalarExp(nonceSum)
-	blinded_point := Mul(rp, blind)
+	blind := blind_base.scalarExp(nonceSum)
+	blinded_point := mul(rp, blind)
 
-	decKeyTemp := Gen() // no identity in this lib for now :(
+	decKeyTemp := gen() // no identity in this lib for now :(
 	for _, nonce := range nonces {
-		decKeyTemp = Mul(decKeyTemp, blind_base.ScalarExp(nonce))
+		decKeyTemp = mul(decKeyTemp, blind_base.scalarExp(nonce))
 	}
 
-	decKeyTemp = Mul(decKeyTemp, Gen().Invert()).Invert()
-	recovered_rp := Mul(blinded_point, decKeyTemp)
+	decKeyTemp = mul(decKeyTemp, gen().invert()).invert()
+	recovered_rp := mul(blinded_point, decKeyTemp)
 
 	if !rp.Equals(recovered_rp) {
 		t.Errorf("Secrets do not match: %s != %s", rp, recovered_rp)

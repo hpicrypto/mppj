@@ -21,8 +21,8 @@ func oprfUnblind(bsk *secretKey, ciphertext *Ciphertext) *message {
 
 // oprfEval computes the encryption of m^k. Computes ReRand internally.
 func oprfEval(key *oprfKey, bpk *publicKey, ciphertext *Ciphertext) *Ciphertext {
-	c0 := ciphertext.c0.ScalarExp((*scalar)(key))
-	c1 := ciphertext.c1.ScalarExp((*scalar)(key))
+	c0 := ciphertext.c0.scalarExp((*scalar)(key))
+	c1 := ciphertext.c1.scalarExp((*scalar)(key))
 
 	return reRand(bpk, &Ciphertext{c0: c0, c1: c1})
 }

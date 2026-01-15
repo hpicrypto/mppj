@@ -114,8 +114,8 @@ func unpad(data []byte) ([]byte, error) {
 func encryptPKE(pk *publicKey, msg *message) *Ciphertext {
 	r := randomScalar()
 
-	c0 := BaseExp(r)
-	c1 := Mul(&msg.m, (*point)(pk).ScalarExp(r))
+	c0 := baseExp(r)
+	c1 := mul(&msg.m, (*point)(pk).scalarExp(r))
 
 	return &Ciphertext{
 		c0: c0,
@@ -136,7 +136,7 @@ func encryptVectorPKE(pk *publicKey, msg []byte) ([]*Ciphertext, error) {
 		copy(chunk, msg_padded[i:end])
 		idx := i / PAYLOADSIZE
 
-		msg, err := NewMessageFromBytes(chunk)
+		msg, err := newMessageFromBytes(chunk)
 		if err != nil {
 			return nil, err
 		}
@@ -150,9 +150,9 @@ func encryptVectorPKE(pk *publicKey, msg []byte) ([]*Ciphertext, error) {
 // decryptPKE decrypts a ciphertext using the secret key sk.
 func decryptPKE(sk *secretKey, ciphertext *Ciphertext) *message {
 	// Calculate s = (g ^ r) ^ -sk
-	s := ciphertext.c0.ScalarExp((*scalar)(sk))
+	s := ciphertext.c0.scalarExp((*scalar)(sk))
 
-	m := Mul(ciphertext.c1, s)
+	m := mul(ciphertext.c1, s)
 
 	return &message{m: *m}
 }
@@ -199,8 +199,8 @@ func decryptVectorPKE(sk *secretKey, ciphertexts []*Ciphertext) ([]byte, error) 
 func reRand(pk *publicKey, ciphertext *Ciphertext) *Ciphertext {
 	r := randomScalar()
 
-	c0 := Mul(ciphertext.c0, BaseExp(r))
-	c1 := Mul(ciphertext.c1, (*point)(pk).ScalarExp(r))
+	c0 := mul(ciphertext.c0, baseExp(r))
+	c1 := mul(ciphertext.c1, (*point)(pk).scalarExp(r))
 
 	return &Ciphertext{
 		c0: c0,
@@ -228,8 +228,8 @@ func reRandVector(pk *publicKey, ciphertexts []*Ciphertext) []*Ciphertext {
 func keyGenPKE() (*secretKey, *publicKey) {
 	sk := randomScalar()
 
-	pk := BaseExp(sk)
-	return (*secretKey)(sk.Neg()), (*publicKey)(pk) // Negate the scalar for efficiency
+	pk := baseExp(sk)
+	return (*secretKey)(sk.neg()), (*publicKey)(pk) // Negate the scalar for efficiency
 }
 
 // Serialize serializes a Ciphertext into a byte slice.
@@ -288,8 +288,8 @@ func DeserializeCiphertext(data []byte) (*Ciphertext, error) {
 		return nil, errors.New("invalid byte slice length for deserialization")
 	}
 
-	c0 := NewPoint()
-	c1 := NewPoint()
+	c0 := newPoint()
+	c1 := newPoint()
 
 	err := c0.UnmarshalBinary(data[:byteLen])
 	if err != nil {
@@ -330,7 +330,7 @@ func (ct *Ciphertext) Equals(other *Ciphertext) bool {
 	return ct.c0.Equals(other.c0) && ct.c1.Equals(other.c1)
 }
 
-func NewMessageFromBytes(msgBytesin []byte) (*message, error) {
+func newMessageFromBytes(msgBytesin []byte) (*message, error) {
 	params := curve.Params()
 
 	if len(msgBytesin) == 0 {
@@ -378,7 +378,7 @@ func NewMessageFromBytes(msgBytesin []byte) (*message, error) {
 	}
 
 	pointBytes := elliptic.Marshal(curve, msgInt, y)
-	result := NewPoint()
+	result := newPoint()
 	err := result.UnmarshalBinary(pointBytes)
 	if err != nil {
 		return nil, err // when using a compatible curve, this should never happen
@@ -423,8 +423,8 @@ func (msg *message) GetMessageStringHex() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// RandomMsg creates a new random message point.
-func RandomMsg() (*message, error) {
+// randomMsg creates a new random message point.
+func randomMsg() (*message, error) {
 
 	randomPoint := randomPoint()
 
@@ -438,11 +438,11 @@ func hashToMessage(msg, sid []byte) *message {
 
 // *********************** Symmetric ************************
 
-// RandomKeyFromPoint generates a random 16-byte key from a random point on the curve
-func RandomKeyFromPoint(sid []byte) (*point, []byte) {
+// randomKeyFromPoint generates a random 16-byte key from a random point on the curve
+func randomKeyFromPoint(sid []byte) (*point, []byte) {
 	rp := randomPoint()
 
-	key, err := KeyFromPoint(rp, sid)
+	key, err := keyFromPoint(rp, sid)
 	if err != nil {
 		panic(err) // Random points are assumed to be "correct"
 	}
@@ -450,7 +450,7 @@ func RandomKeyFromPoint(sid []byte) (*point, []byte) {
 	return rp, key
 }
 
-func KeyFromPoint(rp *point, sid []byte) ([]byte, error) {
+func keyFromPoint(rp *point, sid []byte) ([]byte, error) {
 	info := "ephemeral associated data val key"
 
 	serialized, err := rp.MarshalBinary()
@@ -501,8 +501,8 @@ func GetTestKeys(seed []byte) (SecretKey, PublicKey) {
 
 	esk := &scalar{s: group.RandomScalar(xof)}
 	bsk := &scalar{s: group.RandomScalar(xof)}
-	rsk := SecretKey{esk: (*secretKey)(esk.Neg()), bsk: (*secretKey)(bsk.Neg())}
-	rpk := PublicKey{epk: (*publicKey)(BaseExp(esk)), bpk: (*publicKey)(BaseExp(bsk))}
+	rsk := SecretKey{esk: (*secretKey)(esk.neg()), bsk: (*secretKey)(bsk.neg())}
+	rpk := PublicKey{epk: (*publicKey)(baseExp(esk)), bpk: (*publicKey)(baseExp(bsk))}
 
 	return rsk, rpk
 }
