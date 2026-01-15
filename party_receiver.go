@@ -100,16 +100,16 @@ func (r *Receiver) decryptGroup(group []EncRowWithHint) (map[PartyID]string, err
 		}
 	}
 
-	mask := Identity()
+	mask := identity()
 	for _, dge := range decGroup {
-		mask = Mul(mask, &dge.hint.m)
+		mask = mul(mask, &dge.hint.m)
 	}
-	invMask := mask.Invert()
+	invMask := mask.invert()
 
 	out := make(map[PartyID]string, len(group))
 	for _, dge := range decGroup {
-		keyp := Mul(&dge.blindedkey.m, invMask)
-		key, err := KeyFromPoint(keyp, r.sid)
+		keyp := mul(&dge.blindedkey.m, invMask)
+		key, err := keyFromPoint(keyp, r.sid)
 		if err != nil {
 			panic(err)
 		}

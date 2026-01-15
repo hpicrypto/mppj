@@ -85,7 +85,7 @@ func TestDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	msg, err := NewMessageFromBytes(msgBytes)
+	msg, err := newMessageFromBytes(msgBytes)
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestReRand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	msg, err := NewMessageFromBytes(msgBytes)
+	msg, err := newMessageFromBytes(msgBytes)
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	msg, err := NewMessageFromBytes(msgBytes)
+	msg, err := newMessageFromBytes(msgBytes)
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestIntegration(t *testing.T) {
 
 func TestPlaintext(t *testing.T) {
 	msg_str := "helloworld"
-	msg, err := NewMessageFromBytes([]byte(msg_str))
+	msg, err := newMessageFromBytes([]byte(msg_str))
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestPlaintextUUID(t *testing.T) {
 			continue
 		}
 		msg_str := uuid.New().String()[:i]
-		msg, err := NewMessageFromBytes([]byte(msg_str))
+		msg, err := newMessageFromBytes([]byte(msg_str))
 		if err != nil {
 			t.Fatalf("Failed to create message: %v", err)
 		}
@@ -262,7 +262,7 @@ func TestSerializeDeserializeCiphertexts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	msg, err := NewMessageFromBytes(msgBytes)
+	msg, err := newMessageFromBytes(msgBytes)
 	if err != nil {
 		t.Fatalf("Failed to create message: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestPKEEncKeys(t *testing.T) {
 			t.Fatalf("Failed to generate random bytes: %v", err)
 		}
 
-		msg, err := NewMessageFromBytes(msgBytes)
+		msg, err := newMessageFromBytes(msgBytes)
 		if err != nil {
 			t.Fatalf("Failed to create message: %v", err)
 		}

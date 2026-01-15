@@ -119,7 +119,7 @@ func (h *Helper) genNonces(nSources int) ([]*scalar, *scalar) {
 	nonceSum := newScalar(big.NewInt(0))
 	for i := range nSources {
 		nonces[i] = randomScalar()
-		nonceSum = nonceSum.Add(nonces[i])
+		nonceSum = nonceSum.add(nonces[i])
 	}
 
 	return nonces, nonceSum
@@ -127,7 +127,7 @@ func (h *Helper) genNonces(nSources int) ([]*scalar, *scalar) {
 
 func (h *Helper) blindAndHint(rpk PublicKey, joinid *Ciphertext, value []*Ciphertext, tindex int) ([]byte, *Ciphertext, *Ciphertext, error) {
 
-	rp, key := RandomKeyFromPoint(h.sid)
+	rp, key := randomKeyFromPoint(h.sid)
 
 	serialized, err := serializeCiphertexts(reRandVector(rpk.epk, value))
 	if err != nil {
@@ -140,7 +140,7 @@ func (h *Helper) blindAndHint(rpk PublicKey, joinid *Ciphertext, value []*Cipher
 	}
 
 	blindkey := oprfEval((*oprfKey)(h.padKey), rpk.bpk, joinid) // ReRand internally
-	blindkey.c1 = Mul(blindkey.c1, rp)                          // blind the ephemeral point using joinid ^ s
+	blindkey.c1 = mul(blindkey.c1, rp)                          // blind the ephemeral point using joinid ^ s
 
 	hint := oprfEval((*oprfKey)(h.padKeyShares[tindex]), rpk.bpk, joinid) // ReRand internally
 
