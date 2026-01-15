@@ -13,8 +13,9 @@ not in the inner join should not be disclosed to the receiver. Our protocol addi
 assumes a semi-honest helper party. See the illustration below for a simple example with 
 three data sources.
 
-![Illustration of a three-party Multi-Party Private Join](mppj.svg)
-
+<p align="center">
+	<img alt="Illustration of a three-party Multi-Party Private Join" src="mppj.svg" />
+</p>
 
 ## Synopsis
 
