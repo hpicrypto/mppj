@@ -1,8 +1,20 @@
-# MPPJ-Go: a Go Implementation of the DH-MPPJ Protocol
+# MPPJ: a Go Implementation of the DH-MPPJ Protocol
 
 This package implements the DH-MPPJ protocol, as proposed in the paper "Multi-party Private
 Joins" by by Anja Lehmann, Christian Mouchet and Andrey Sidorenko, PETS 2026. It implement
 this protocol over the P-256 elliptic curve.
+
+## Multi-Party Private Join
+
+A multi-party private join (MPPJ) protocol enables multiple source parties to provide a 
+receiver party with the inner joins over their respective datasets, while revealing as little information as possible.
+In particular, the identifiers (primary keys in database terms), as well as any data 
+not in the inner join should not be disclosed to the receiver. Our protocol additionally 
+assumes a semi-honest helper party. See the illustration below for a simple example with 
+three data sources.
+
+[Illustration of a three-party Multi-Party Private Join](mppj.svg)
+
 
 ## Synopsis
 
