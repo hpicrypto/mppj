@@ -19,8 +19,13 @@ import (
 
 var curve = elliptic.P256()
 
-const KEYSIZE = 16
-const PAYLOADSIZE = 30
+// *********************** Constants ************************
+
+// KeySize is the size of symmetric keys in bytes.
+const KeySize = 16
+
+// MaxValueSize is the maximum size of the input tables' values in bytes.
+const MaxValueSize = 30
 
 var zeroNonce = make([]byte, aes.BlockSize)
 
@@ -127,14 +132,14 @@ func encryptPKE(pk *publicKey, msg *message) *Ciphertext {
 // encryptVectorPKE encrypts a byte slice PAYLOADSIZE bytes at a time using the public key pk. ( due to the 256-bit curve)
 func encryptVectorPKE(pk *publicKey, msg []byte) ([]*Ciphertext, error) {
 
-	ciphertexts := make([]*Ciphertext, len(pad(msg, PAYLOADSIZE))/PAYLOADSIZE)
-	msg_padded := pad(msg, PAYLOADSIZE)
+	ciphertexts := make([]*Ciphertext, len(pad(msg, MaxValueSize))/MaxValueSize)
+	msg_padded := pad(msg, MaxValueSize)
 
-	for i := 0; i < len(msg_padded); i += PAYLOADSIZE {
-		end := i + PAYLOADSIZE
-		chunk := make([]byte, PAYLOADSIZE)
+	for i := 0; i < len(msg_padded); i += MaxValueSize {
+		end := i + MaxValueSize
+		chunk := make([]byte, MaxValueSize)
 		copy(chunk, msg_padded[i:end])
-		idx := i / PAYLOADSIZE
+		idx := i / MaxValueSize
 
 		msg, err := newMessageFromBytes(chunk)
 		if err != nil {
@@ -458,7 +463,7 @@ func keyFromPoint(rp *point, sid []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	key, err := hkdf.Key(sha256.New, serialized, sid, info, KEYSIZE)
+	key, err := hkdf.Key(sha256.New, serialized, sid, info, KeySize)
 	if err != nil {
 		return nil, err
 	}
@@ -482,12 +487,12 @@ func ctr(key, plaintext []byte) (SymmetricCiphertext, error) {
 }
 
 // Encrypt the plaintext bytes with the symmetric key using AES-CTR
-func SymmetricEncrypt(key []byte, plaintext []byte) (SymmetricCiphertext, error) {
+func symmetricEncrypt(key []byte, plaintext []byte) (SymmetricCiphertext, error) {
 	return ctr(key, plaintext)
 }
 
 // Decrypt the ciphertext bytes with the symmetric key using AES-CTR
-func SymmetricDecrypt(key []byte, ciphertext SymmetricCiphertext) ([]byte, error) {
+func symmetricDecrypt(key []byte, ciphertext SymmetricCiphertext) ([]byte, error) {
 	return ctr(key, ciphertext)
 }
 

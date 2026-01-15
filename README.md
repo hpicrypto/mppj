@@ -12,7 +12,8 @@ and provide the main cryptographic operations as public methods.
 
 The protocol has two rounds, so each type has one main method which correspond to its
 local operation in the protocol:
-- `mppj.Source.Prepare` encrypts a single source's data towards the receiver's public key. The data is to be sent to the Helper.
+- `mppj.Source.Prepare` encrypts a single source's data towards the receiver's public key.
+  The data is to be sent to the Helper. 
 - `mppj.Helper.Convert` takes as input all the sources' encrypted data tables, and
   computes an encrypted *joined* table, which is to be sent to the Receiver.
 - `mppj.Receiver.JoinTables` decrypts the joined tables and extracts the join.
@@ -21,8 +22,9 @@ Each operation has a channel-based counterpart which enables each party to proce
 tables in a streaming fashion. The streamed and the non-streamed methods enable processing
 over multiple cores via a parameterizable number of goroutines.
 
-See the `examples/minimal/main.go` file for a minimal working program demonstrating the
-use of the types. 
+See the [`examples/minimal/main.go`](examples/minimal/main.go) file for a minimal working
+program demonstrating the use of the types. The documentation is hosted at
+[https://pkg.go.dev/github.com/hpicrypto/mppj].
 
 ## Package Structure
 
